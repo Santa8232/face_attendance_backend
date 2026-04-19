@@ -9,4 +9,19 @@ const ok = (res, data = {}, message = 'OK', status = 200) =>
 const fail = (res, message = 'Error', status = 400, errors = null) =>
   res.status(status).json({ success: false, message, ...(errors && { errors }) });
 
-module.exports = { asyncHandler, ok, fail };
+module.exports = {
+  asyncHandler,
+  ok,
+  fail,
+  haversineMeters: (lat1, lon1, lat2, lon2) => {
+    const R = 6_371_000;
+    const p1 = (lat1 * Math.PI) / 180,
+      p2 = (lat2 * Math.PI) / 180;
+    const dp = ((lat2 - lat1) * Math.PI) / 180,
+      dl = ((lon2 - lon1) * Math.PI) / 180;
+    const a =
+      Math.sin(dp / 2) ** 2 +
+      Math.cos(p1) * Math.cos(p2) * Math.sin(dl / 2) ** 2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  },
+};

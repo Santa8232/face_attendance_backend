@@ -7,20 +7,18 @@ Data is stored in a persistent **PostgreSQL** database. The architecture utilize
 
 ## Summary
 
-This backend powers a **biometric face-attendance platform** for enterprises and institutions. It handles the full lifecycle from employee onboarding to daily attendance reporting:
-
-- **Authentication** — JWT-based login with role-based access control (Admin · HR · Employee)
-- **Employee Management** — CRUD with soft-delete, department, shift and office linking
-- **Face Enrollment** — multi-sample session flow (up to 5 samples), face template storage, admin reset with audit trail
+This backend powers a **biometric face-attendance platform** for enterprises and institutions. It handles the full lifecycle from employee onboarding to daily attendance reporting:- **Authentication** — JWT-based login with role-based access control (Admin · HR · Employee). Now includes integer `id` and `employee_id` in token payloads.
+- **Employee Management** — CRUD with soft-delete, department, shift and office linking. Uses auto-incrementing integer primary keys.
+- **Face Enrollment** — multi-sample session flow (up to 5 samples), face template storage, admin reset with audit trail.
 - **Attendance Engine** — check-in / check-out with a full server-side validation pipeline:
   - Face match score threshold (≥ 0.75 cosine similarity)
   - Liveness check confirmation
   - GPS geofence validation (Haversine formula)
   - Duplicate-punch prevention (120-second window)
-- **Offline Sync** — batch upload of attendance captured without connectivity, with configurable offline window (default 12 h)
-- **Admin Dashboard Data** — today's summary, daily work-hour summaries, exception management, audit log
-- **Device Registry** — bind and trust employee devices; untrust on loss/theft
-- **Swagger UI** — interactive API explorer at `/api-docs`
+- **Offline Sync** — batch upload of attendance captured without connectivity, with configurable offline window (default 12 h).
+- **Admin Dashboard Data** — today's summary, daily work-hour summaries, exception management, audit log.
+- **Device Registry** — bind and trust employee devices; untrust on loss/theft. Supports device rebinding for employees.
+- **Swagger UI** — interactive API explorer at `/api-docs`.
 
 ---
 
@@ -30,17 +28,21 @@ This backend powers a **biometric face-attendance platform** for enterprises and
 # 1. Install dependencies
 npm install
 
-# 3. Configure environment
-# Create a .env file with your DB_URL
-# DB_URL=postgres://user:pass@localhost:5432/face_attendance
+# 2. Configure environment
+# Create a .env file with your DB credentials
+# DB_HOST=localhost
+# DB_PORT=5432
+# DB_USER=postgres
+# DB_PASSWORD=your_password
+# DB_NAME=facial
 
-# 4. Initialize Database
-node src/db/initDb.js
+# 3. Initialize Database (SERIAL IDs)
+node src/db/initDb.js --reset
 
-# 5. Seed demo data
-node src/db/seed.js
+# 4. Migrate Data (optional - maps JSON UUIDs to Integer IDs)
+node src/db/migrateData.js
 
-# 6. Start with auto-reload
+# 5. Start with auto-reload
 npm run dev
 ```
 
@@ -55,8 +57,8 @@ Swagger UI at **`http://localhost:3000/api-docs`**
 |---------|-------------|
 | `npm run dev` | Start with nodemon (auto-reload on file save) |
 | `npm start` | Start without auto-reload |
-| `npm run stop` | Kill all Node processes (frees the port) |
-| `node src/db/seed.js` | Seed demo data |
+| `node src/db/initDb.js` | Initialize PostgreSQL schema |
+| `node src/db/migrateData.js` | Migrate legacy JSON data to PostgreSQL |
 
 ---
 
@@ -69,20 +71,20 @@ Swagger UI at **`http://localhost:3000/api-docs`**
 
 ---
 
-## API Overview
+## API Overview (v1)
 
 Full reference → [`docs/api_doc.md`](./docs/api_doc.md)  
 Interactive explorer → `http://localhost:3000/api-docs`
 
 | Group | Key Endpoints |
 |-------|--------------|
-| **Auth** | `POST /api/auth/login` · `/register` · `/change-password` |
-| **Employees** | `GET/POST /api/employees` · `GET /api/employees/me` |
-| **Enrollment** | `POST /api/enrollment/start` → `/sample` → `/complete` |
-| **Attendance** | `POST /api/attendance/checkin` · `/checkout` · `/sync` |
-| **Reports** | `GET /api/attendance/today-summary` · `/daily-summary` |
-| **Admin** | `/api/admin/offices` · `/shifts` · `/geofences` · `/policies` · `/exceptions` · `/audit-logs` |
-| **Devices** | `POST /api/devices/register` · `DELETE /api/devices/:id` |
+| **Auth** | `POST /api/v1/auth/login` · `/refresh` · `/logout` |
+| **Employees** | `GET /api/v1/employees` · `PATCH /api/v1/employees/:id/status` |
+| **Enrollment** | `POST /api/v1/face/enrollment/start` · `/sample` · `/complete` |
+| **Attendance** | `POST /api/v1/attendance/check-in` · `/check-out` · `/sync` |
+| **Reports** | `GET /api/v1/reports/daily-summary` · `/late-arrivals` |
+| **Management** | `GET /api/v1/shifts` · `POST /api/v1/shifts/assign` · `/api/v1/geofences/validate` |
+| **Devices** | `POST /api/v1/devices/register` · `/api/v1/devices/rebind` |
 
 ---
 
@@ -95,32 +97,31 @@ face_attendance_backend/
 │   │   ├── constants.js          # Thresholds, JWT config, limits
 │   │   └── swagger.js            # OpenAPI 3.0 spec
 │   ├── controllers/
-│   │   ├── authController.js     # Login, register, change-password
-│   │   ├── employeeController.js # Employee CRUD
-│   │   ├── enrollmentController.js # Face enrollment flow
-│   │   ├── attendanceController.js # Check-in/out, sync, summaries
 │   │   ├── adminController.js    # Master data + exceptions + audit
-│   │   └── deviceController.js   # Device registry
+│   │   ├── attendanceController.js # Check-in/out, sync, summaries
+│   │   ├── authController.js     # Login, refresh, logout
+│   │   ├── deviceController.js   # Device registry & rebinding
+│   │   ├── employeeController.js # Employee management
+│   │   ├── enrollmentController.js # Face enrollment flow
+│   │   ├── faceVerificationController.js # Face matching logic
+│   │   └── reportsController.js  # Consolidated reporting
 │   ├── db/
-│   │   ├── store.js              # JSON file CRUD adapter (swap for DB here)
-│   │   └── seed.js               # Demo data seeder
+│   │   ├── store.js              # PostgreSQL async adapter (ID-aware)
+│   │   ├── initDb.js             # Schema initialization (SERIAL IDs)
+│   │   └── migrateData.js        # JSON-to-Postgres migration engine
 │   ├── middleware/
 │   │   ├── auth.js               # JWT authenticate() + authorize()
 │   │   └── upload.js             # Multer image upload
 │   ├── routes/
-│   │   ├── authRoutes.js
-│   │   ├── employeeRoutes.js
-│   │   ├── enrollmentRoutes.js
-│   │   ├── attendanceRoutes.js
-│   │   ├── adminRoutes.js
-│   │   └── deviceRoutes.js
-│   ├── utils/helpers.js          # asyncHandler, ok(), fail()
+│   │   ├── v1/                   # Versioned routes (consolidated)
+│   │   └── ...                   # Root level routes
+│   ├── utils/helpers.js          # asyncHandler, ok(), fail(), haversine
 │   └── server.js                 # Express app entry point
-├── data/                         # JSON data files (auto-created, gitignored)
 ├── uploads/                      # Uploaded images (auto-created, gitignored)
 ├── docs/
 │   └── api_doc.md                # Full API documentation
 ├── package.json
+├── changelog.md                  # Detailed history of changes
 └── README.md
 ```
 

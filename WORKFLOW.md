@@ -13,22 +13,22 @@ sequenceDiagram
     participant DB as PostgreSQL
 
     U->>APP: Login (Email/Password)
-    APP->>API: POST /auth/login
-    API-->>APP: JWT + Employee Data
+    APP->>API: POST /api/v1/auth/login
+    API-->>APP: JWT + Employee Data (id, office_id)
     
     U->>APP: Start Enrollment
-    APP->>API: POST /face/enrollment/start
+    APP->>API: POST /api/v1/face/enrollment/start
     API->>DB: Create Session (IN_PROGRESS)
-    API-->>APP: session_id + required_samples (5)
+    API-->>APP: session_id (Integer) + required_samples (5)
 
     loop Every Instruction (Look Straight, Turn Left, etc.)
         APP->>APP: Local Liveness Check (ML Kit)
         U->>APP: Performs Action
-        APP->>API: POST /face/enrollment/sample (Multipart)
+        APP->>API: POST /api/v1/face/enrollment/sample (Multipart)
         API->>DB: Save Sample + Increment Count
     end
 
-    APP->>API: POST /face/enrollment/complete
+    APP->>API: POST /api/v1/face/enrollment/complete
     API->>DB: Aggregate Samples -> Generate Template
     API->>DB: Update Session (COMPLETED)
     
@@ -62,15 +62,17 @@ sequenceDiagram
     APP->>APP: Face Ready (Liveness Passed)
     APP->>APP: Take Snapshot (High-Res)
     
-    APP->>API: POST /face/verify (Image + Telemetry)
+    APP->>API: POST /api/v1/face/verify (Image + Telemetry)
     API->>DB: Fetch Active Template
-    Note over API: Compare Face (Phase I: Local Match Check)
+    Note over API: Compare Face (Cosine Similarity)
     API-->>APP: 200 OK + verification_token
-
-    APP->>API: POST /attendance/check-in (Token + Location)
+    
+    Note over APP: App validates Geofence (Optional local check)
+    APP->>API: POST /api/v1/attendance/check-in (Token + Location)
     API->>API: Consume verification_token
+    API->>API: Validate Geofence (Server-side)
     API->>DB: Insert attendance_logs
-    API->>DB: Update Daily Summary
+    API->>DB: Update Daily Summary (id mapping)
     
     API-->>APP: Attendance Recorded Successfully
     APP->>U: Visual Success / Snack bar

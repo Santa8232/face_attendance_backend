@@ -10,7 +10,7 @@ module.exports = {
   JWT_EXPIRES_IN: "8h",
 
   // Face matching
-  FACE_MATCH_THRESHOLD: 0.75, // cosine similarity ≥ 0.75 = match
+  FACE_MATCH_THRESHOLD: 0.70, // cosine similarity ≥ 0.70 = match
   MAX_ENROLLMENT_SAMPLES: 5,
 
   // Attendance
