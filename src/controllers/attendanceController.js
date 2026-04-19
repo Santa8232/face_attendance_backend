@@ -148,15 +148,23 @@ const getMyAttendance = asyncHandler(async (req, res) => {
 
   let logs = await store.findMany(TABLES.ATTENDANCE_LOGS, { employee_id: empId });
 
+  // Format dates to YYYY-MM-DD strings for consistent filtering and grouping
+  logs = logs.map(l => ({
+    ...l,
+    attendance_date: l.attendance_date instanceof Date 
+      ? l.attendance_date.toISOString().slice(0, 10) 
+      : String(l.attendance_date).slice(0, 10)
+  }));
+
   if (month) {
-    logs = logs.filter(l => String(l.attendance_date).startsWith(month));
+    logs = logs.filter(l => l.attendance_date.startsWith(month));
   }
 
   logs.sort((a, b) => new Date(b.event_timestamp) - new Date(a.event_timestamp));
 
   const days = {};
   logs.forEach(l => {
-    const d = String(l.attendance_date).slice(0, 10);
+    const d = l.attendance_date;
     if (!days[d]) days[d] = { date: d, check_in: null, check_out: null, work_minutes: null };
     if (l.event_type === 'CHECK_IN'  && !days[d].check_in)  days[d].check_in  = l.event_timestamp;
     if (l.event_type === 'CHECK_OUT' && !days[d].check_out) days[d].check_out = l.event_timestamp;
@@ -187,8 +195,16 @@ const listAttendance = asyncHandler(async (req, res) => {
     if (office_id)   logs = logs.filter(l => l.office_id   === parseInt(office_id));
   }
 
+  // Format dates for SQL consistency
+  logs = logs.map(l => ({
+    ...l,
+    attendance_date: l.attendance_date instanceof Date 
+      ? l.attendance_date.toISOString().slice(0, 10) 
+      : String(l.attendance_date).slice(0, 10)
+  }));
+
   if (event_type) logs = logs.filter(l => l.event_type === event_type.toUpperCase());
-  if (date)       logs = logs.filter(l => String(l.attendance_date).slice(0,10) === date);
+  if (date)       logs = logs.filter(l => l.attendance_date === date);
 
   logs.sort((a, b) => new Date(b.event_timestamp) - new Date(a.event_timestamp));
   const offset = (parseInt(page) - 1) * parseInt(limit);
@@ -252,9 +268,12 @@ const syncOffline = asyncHandler(async (req, res) => {
 const todaySummary = asyncHandler(async (req, res) => {
   const today = new Date().toISOString().slice(0, 10);
   const { office_id } = req.query;
-  const logs = await store.findMany(TABLES.ATTENDANCE_LOGS, l =>
-    String(l.attendance_date).slice(0,10) === today && (!office_id || l.office_id === parseInt(office_id))
-  );
+  const logs = await store.findMany(TABLES.ATTENDANCE_LOGS, l => {
+    const d = l.attendance_date instanceof Date 
+      ? l.attendance_date.toISOString().slice(0, 10) 
+      : String(l.attendance_date).slice(0, 10);
+    return d === today && (!office_id || l.office_id === parseInt(office_id));
+  });
   const checkedIn  = new Set(logs.filter(l => l.event_type === 'CHECK_IN').map(l => l.employee_id));
   const checkedOut = new Set(logs.filter(l => l.event_type === 'CHECK_OUT').map(l => l.employee_id));
   const total = (await store.findMany(TABLES.EMPLOYEES, e => e.is_active && (!office_id || e.office_id === parseInt(office_id)))).length;
@@ -269,6 +288,15 @@ const todaySummary = asyncHandler(async (req, res) => {
 const getDailySummary = asyncHandler(async (req, res) => {
   const { employee_id, date } = req.query;
   let summaries = await store.getAll(TABLES.ATTENDANCE_SUMMARY);
+  
+  // Format dates
+  summaries = summaries.map(s => ({
+    ...s,
+    attendance_date: s.attendance_date instanceof Date 
+      ? s.attendance_date.toISOString().slice(0, 10) 
+      : String(s.attendance_date).slice(0, 10)
+  }));
+
   if (employee_id) summaries = summaries.filter(s => s.employee_id === parseInt(employee_id));
   if (date)        summaries = summaries.filter(s => s.attendance_date === date);
   if (req.user.role === 'EMPLOYEE') summaries = summaries.filter(s => s.employee_id === req.user.employee_id);
