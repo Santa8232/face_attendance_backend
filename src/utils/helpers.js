@@ -24,4 +24,17 @@ module.exports = {
       Math.cos(p1) * Math.cos(p2) * Math.sin(dl / 2) ** 2;
     return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   },
+  /** Returns YYYY-MM-DD in India Standard Time */
+  getISTDate: (date = new Date()) => {
+    return new Date(date.getTime() + (5.5 * 60 * 60 * 1000)).toISOString().slice(0, 10);
+  },
+  /** Returns YYYY-MM-DD HH:mm:ss in India Standard Time */
+  formatIST: (date = new Date()) => {
+    return new Date(date.getTime() + (5.5 * 60 * 60 * 1000)).toISOString().replace('T', ' ').split('.')[0];
+  },
+  /** Returns ISO string in IST (with +05:30 offset) */
+  toISTString: (date = new Date()) => {
+    const d = new Date(date.getTime() + (5.5 * 60 * 60 * 1000));
+    return d.toISOString().replace('Z', '+05:30');
+  }
 };

@@ -1,7 +1,7 @@
 const { v4: uuidv4 } = require("uuid");
 const store = require("../db/store");
 const { TABLES } = store;
-const { asyncHandler, ok, fail } = require("../utils/helpers");
+const { asyncHandler, ok, fail, toISTString } = require("../utils/helpers");
 const { FACE_MATCH_THRESHOLD } = require("../config/constants");
 
 const verificationTokens = new Map();
@@ -144,7 +144,7 @@ const verifyFace = asyncHandler(async (req, res) => {
       risk_flags: riskFlags,
     }),
     device_id: device_id || null,
-    created_at: new Date().toISOString(),
+    created_at: toISTString(),
   });
 
   return ok(

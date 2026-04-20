@@ -1,7 +1,7 @@
 const { v4: uuidv4 } = require('uuid');
 const store  = require('../db/store');
 const { TABLES } = store;
-const { asyncHandler, ok, fail } = require('../utils/helpers');
+const { asyncHandler, ok, fail, getISTDate, toISTString } = require('../utils/helpers');
 const { MAX_ENROLLMENT_SAMPLES } = require('../config/constants');
 
 const ENROLLMENT_INSTRUCTIONS = [
@@ -48,13 +48,13 @@ const startEnrollment = asyncHandler(async (req, res) => {
   }
 
   const session = await store.insert(TABLES.ENROLLMENT_SESSIONS, {
-    enrollment_session_id: `enr_${new Date().toISOString().slice(0,10).replace(/-/g,'')}_${uuidv4().slice(0,6)}`,
+    enrollment_session_id: `enr_${getISTDate().replace(/-/g,'')}_${uuidv4().slice(0,6)}`,
     employee_id:  emp.id,
     device_id:    device_id || null,
     initiated_by: req.user.id,
     status:       'IN_PROGRESS',
     sample_count: 0,
-    created_at:   new Date().toISOString(),
+    created_at:   toISTString(),
     completed_at: null,
   });
 
@@ -136,7 +136,7 @@ const uploadSample = asyncHandler(async (req, res) => {
     yaw:                   pose.yaw   != null ? parseFloat(pose.yaw)   : (capture_meta.yaw || null),
     pitch:                 pose.pitch != null ? parseFloat(pose.pitch) : (capture_meta.pitch || null),
     roll:                  pose.roll  != null ? parseFloat(pose.roll)  : (capture_meta.roll || null),
-    created_at:            new Date().toISOString(),
+    created_at:            toISTString(),
   });
 
   const newCount = session.sample_count + 1;
@@ -225,13 +225,13 @@ const completeEnrollment = asyncHandler(async (req, res) => {
     liveness_avg:          avg(samples, 'liveness_score'),
     is_active:             true,           // Auto-approve for dev
     approval_status:       'approved_auto',
-    created_at:            new Date().toISOString(),
-    updated_at:            new Date().toISOString(),
+    created_at:            toISTString(),
+    updated_at:            toISTString(),
   });
 
   await store.update(TABLES.ENROLLMENT_SESSIONS, session.id, {
     status:       'COMPLETED',
-    completed_at: new Date().toISOString(),
+    completed_at: toISTString(),
   });
 
   await store.update(TABLES.EMPLOYEES, session.employee_id, { 
@@ -314,7 +314,7 @@ const resetEnrollment = asyncHandler(async (req, res) => {
     action_type:   'ENROLLMENT_RESET',
     entity_name:   'employees',
     entity_id:     String(emp.id),
-    created_at:    new Date().toISOString(),
+    created_at:    toISTString(),
   });
 
   return ok(res, {}, 'Enrollment reset');
@@ -328,7 +328,7 @@ const approveTemplate = asyncHandler(async (req, res) => {
 
   await store.update(TABLES.FACE_TEMPLATES, template.id, {
     approval_status: 'approved',
-    updated_at: new Date().toISOString(),
+    updated_at: toISTString(),
   });
 
   return ok(res, {}, 'Template approved');
