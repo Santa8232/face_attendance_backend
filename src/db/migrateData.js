@@ -17,6 +17,15 @@ const loadJson = (filename) => {
 };
 
 const migrate = async () => {
+  const mapping = {
+    users: {},
+    offices: {},
+    departments: {},
+    shifts: {},
+    employees: {},
+    sessions: {},
+  };
+
   try {
     console.log('🚀 Starting migration from JSON to PostgreSQL...');
 
@@ -24,109 +33,114 @@ const migrate = async () => {
     const users = loadJson('users.json');
     console.log(`  - Migrating ${users.length} users...`);
     for (const user of users) {
-      await store.insert(TABLES.USERS, user);
+      const { user_id, ...data } = user;
+      const res = await store.insert(TABLES.USERS, { ...data, user_id });
+      mapping.users[user_id] = res.id;
     }
 
     // 2. Offices
     const offices = loadJson('offices.json');
     console.log(`  - Migrating ${offices.length} offices...`);
     for (const office of offices) {
-      await store.insert(TABLES.OFFICES, office);
+      const { office_id, ...data } = office;
+      const res = await store.insert(TABLES.OFFICES, { ...data, office_id });
+      mapping.offices[office_id] = res.id;
     }
 
     // 3. Departments
     const departments = loadJson('departments.json');
     console.log(`  - Migrating ${departments.length} departments...`);
     for (const dept of departments) {
-      await store.insert(TABLES.DEPARTMENTS, dept);
+      const { department_id, office_id, ...data } = dept;
+      const res = await store.insert(TABLES.DEPARTMENTS, {
+        ...data,
+        department_id,
+        office_id: mapping.offices[office_id] || null
+      });
+      mapping.departments[department_id] = res.id;
     }
 
     // 4. Shifts
     const shifts = loadJson('shifts.json');
     console.log(`  - Migrating ${shifts.length} shifts...`);
     for (const shift of shifts) {
-      await store.insert(TABLES.SHIFTS, shift);
+      const { shift_id, office_id, ...data } = shift;
+      const res = await store.insert(TABLES.SHIFTS, {
+        ...data,
+        shift_id,
+        office_id: mapping.offices[office_id] || null
+      });
+      mapping.shifts[shift_id] = res.id;
     }
 
     // 5. Employees
     const employees = loadJson('employees.json');
     console.log(`  - Migrating ${employees.length} employees...`);
-    
-    // Fetch valid IDs for FK checks
-    const validUsers = (await store.getAll(TABLES.USERS)).map(u => u.user_id);
-    const validOffices = (await store.getAll(TABLES.OFFICES)).map(o => o.office_id);
-    const validDepts = (await store.getAll(TABLES.DEPARTMENTS)).map(d => d.department_id);
-    const validShifts = (await store.getAll(TABLES.SHIFTS)).map(s => s.shift_id);
-
     for (const emp of employees) {
-      if (!validUsers.includes(emp.user_id)) {
-        console.warn(`    ⚠️ Skipping employee ${emp.employee_code}: User ID ${emp.user_id} not found.`);
-        continue;
-      }
-      if (!validOffices.includes(emp.office_id)) {
-        console.warn(`    ⚠️ Skipping employee ${emp.employee_code}: Office ID ${emp.office_id} not found.`);
-        continue;
-      }
-      // Note: department_id and shift_id are also FKs but might be optional in some cases
-      // For this migration, we'll enforce them if present in JSON
-      if (emp.department_id && !validDepts.includes(emp.department_id)) {
-        console.warn(`    ⚠️ Skipping employee ${emp.employee_code}: Dept ID ${emp.department_id} not found.`);
-        continue;
-      }
-      if (emp.shift_id && !validShifts.includes(emp.shift_id)) {
-        console.warn(`    ⚠️ Skipping employee ${emp.employee_code}: Shift ID ${emp.shift_id} not found.`);
-        continue;
-      }
-
-      await store.insert(TABLES.EMPLOYEES, emp);
+      const { employee_id, user_id, office_id, department_id, shift_id, ...data } = emp;
+      const res = await store.insert(TABLES.EMPLOYEES, {
+        ...data,
+        employee_id,
+        user_id: mapping.users[user_id] || null,
+        office_id: mapping.offices[office_id] || null,
+        department_id: mapping.departments[department_id] || null,
+        shift_id: mapping.shifts[shift_id] || null,
+      });
+      mapping.employees[employee_id] = res.id;
     }
 
     // 6. Geofences
     const geofences = loadJson('geofences.json');
     console.log(`  - Migrating ${geofences.length} geofences...`);
     for (const geo of geofences) {
-      if (!validOffices.includes(geo.office_id)) {
-        console.warn(`    ⚠️ Skipping geofence ${geo.geofence_name}: Office ID ${geo.office_id} not found.`);
-        continue;
-      }
-      await store.insert(TABLES.GEOFENCES, geo);
+      const { geofence_id, office_id, ...data } = geo;
+      await store.insert(TABLES.GEOFENCES, {
+        ...data,
+        geofence_id,
+        office_id: mapping.offices[office_id] || null
+      });
     }
 
     // 7. Attendance Policies
     const policies = loadJson('attendance_policies.json');
     console.log(`  - Migrating ${policies.length} policies...`);
-    for (const policy of policies) {
-      if (!validOffices.includes(policy.office_id)) {
-        console.warn(`    ⚠️ Skipping policy for Office ID ${policy.office_id}: Office not found.`);
-        continue;
-      }
-      await store.insert(TABLES.ATTENDANCE_POLICIES, policy);
+    for (const p of policies) {
+      const { policy_id, office_id, ...data } = p;
+      await store.insert(TABLES.ATTENDANCE_POLICIES, {
+        ...data,
+        policy_id,
+        office_id: mapping.offices[office_id] || null
+      });
     }
 
     // 8. Device Registry
     const devices = loadJson('device_registry.json');
     console.log(`  - Migrating ${devices.length} devices...`);
-    const validEmployees = (await store.getAll(TABLES.EMPLOYEES)).map(e => e.employee_id);
     for (const device of devices) {
-      if (!validEmployees.includes(device.employee_id)) {
-        console.warn(`    ⚠️ Skipping device ${device.device_id}: Employee ID ${device.employee_id} not found.`);
-        continue;
-      }
-      await store.insert(TABLES.DEVICE_REGISTRY, device);
+      const { device_registry_id, employee_id, ...data } = device;
+      await store.insert(TABLES.DEVICE_REGISTRY, {
+        ...data,
+        device_registry_id,
+        employee_id: mapping.employees[employee_id] || null
+      });
     }
 
     // 9. Audit Logs
     const auditLogs = loadJson('audit_logs.json');
     console.log(`  - Migrating ${auditLogs.length} audit logs...`);
-    // Batch audit logs if there are many, but for now loop is fine for small data
     for (const log of auditLogs) {
-      await store.insert(TABLES.AUDIT_LOGS, log);
+      const { audit_id, actor_user_id, ...data } = log;
+      await store.insert(TABLES.AUDIT_LOGS, {
+        ...data,
+        audit_id,
+        actor_user_id: mapping.users[actor_user_id] || null
+      });
     }
 
     console.log('\n✅ Migration complete!');
     process.exit(0);
   } catch (err) {
-    console.error('\n❌ Migration Failed:', err.message);
+    console.error('\n❌ Migration Failed:', err.stack);
     process.exit(1);
   }
 };

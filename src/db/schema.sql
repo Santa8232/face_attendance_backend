@@ -2,7 +2,8 @@
 
 -- 1. Users & Authentication
 CREATE TABLE IF NOT EXISTS users (
-    user_id UUID PRIMARY KEY,
+    id SERIAL PRIMARY KEY,
+    user_id UUID UNIQUE, -- Keep UUID for external references if needed, but 'id' is internal PK
     email VARCHAR(255) UNIQUE NOT NULL,
     username VARCHAR(100) UNIQUE,
     password VARCHAR(255) NOT NULL,
@@ -14,7 +15,8 @@ CREATE TABLE IF NOT EXISTS users (
 
 -- 2. Offices
 CREATE TABLE IF NOT EXISTS offices (
-    office_id UUID PRIMARY KEY,
+    id SERIAL PRIMARY KEY,
+    office_id UUID UNIQUE,
     office_name VARCHAR(255) NOT NULL,
     address TEXT,
     city VARCHAR(100),
@@ -29,8 +31,9 @@ CREATE TABLE IF NOT EXISTS offices (
 
 -- 3. Departments
 CREATE TABLE IF NOT EXISTS departments (
-    department_id UUID PRIMARY KEY,
-    office_id UUID REFERENCES offices(office_id),
+    id SERIAL PRIMARY KEY,
+    department_id UUID UNIQUE,
+    office_id INTEGER REFERENCES offices(id),
     department_name VARCHAR(255) NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
@@ -38,8 +41,9 @@ CREATE TABLE IF NOT EXISTS departments (
 
 -- 4. Shifts
 CREATE TABLE IF NOT EXISTS shifts (
-    shift_id UUID PRIMARY KEY,
-    office_id UUID REFERENCES offices(office_id),
+    id SERIAL PRIMARY KEY,
+    shift_id UUID UNIQUE,
+    office_id INTEGER REFERENCES offices(id),
     shift_name VARCHAR(100) NOT NULL,
     start_time TIME NOT NULL,
     end_time TIME NOT NULL,
@@ -51,11 +55,12 @@ CREATE TABLE IF NOT EXISTS shifts (
 
 -- 5. Employees
 CREATE TABLE IF NOT EXISTS employees (
-    employee_id UUID PRIMARY KEY,
-    user_id UUID REFERENCES users(user_id),
-    office_id UUID REFERENCES offices(office_id),
-    department_id UUID REFERENCES departments(department_id),
-    shift_id UUID REFERENCES shifts(shift_id),
+    id SERIAL PRIMARY KEY,
+    employee_id UUID UNIQUE,
+    user_id INTEGER REFERENCES users(id),
+    office_id INTEGER REFERENCES offices(id),
+    department_id INTEGER REFERENCES departments(id),
+    shift_id INTEGER REFERENCES shifts(id),
     employee_code VARCHAR(50) UNIQUE NOT NULL,
     full_name VARCHAR(255) NOT NULL,
     email VARCHAR(255) UNIQUE NOT NULL,
@@ -70,10 +75,11 @@ CREATE TABLE IF NOT EXISTS employees (
 
 -- 6. Enrollment Sessions
 CREATE TABLE IF NOT EXISTS enrollment_sessions (
-    enrollment_session_id VARCHAR(100) PRIMARY KEY,
-    employee_id UUID REFERENCES employees(employee_id),
+    id SERIAL PRIMARY KEY,
+    enrollment_session_id VARCHAR(100) UNIQUE,
+    employee_id INTEGER REFERENCES employees(id),
     device_id VARCHAR(255),
-    initiated_by UUID REFERENCES users(user_id),
+    initiated_by INTEGER REFERENCES users(id),
     status VARCHAR(50) DEFAULT 'IN_PROGRESS', -- 'IN_PROGRESS', 'COMPLETED', 'CANCELLED'
     sample_count INTEGER DEFAULT 0,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
@@ -83,33 +89,36 @@ CREATE TABLE IF NOT EXISTS enrollment_sessions (
 
 -- 7. Enrollment Samples
 CREATE TABLE IF NOT EXISTS enrollment_samples (
-    sample_id UUID PRIMARY KEY,
-    enrollment_session_id VARCHAR(100) REFERENCES enrollment_sessions(enrollment_session_id),
+    id SERIAL PRIMARY KEY,
+    sample_id UUID UNIQUE,
+    enrollment_session_id INTEGER REFERENCES enrollment_sessions(id),
     sample_no INTEGER NOT NULL,
     image_url TEXT,
-    image_base64 TEXT, -- Use sparingly, prefer URLs
+    image_base64 TEXT,
     quality_score DECIMAL(5, 4),
     liveness_score DECIMAL(5, 4),
     yaw DECIMAL(10, 4),
     pitch DECIMAL(10, 4),
     roll DECIMAL(10, 4),
+    face_embedding JSONB,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
 -- 8. Face Templates (Approved templates)
 CREATE TABLE IF NOT EXISTS face_templates (
-    template_id UUID PRIMARY KEY,
-    employee_id UUID REFERENCES employees(employee_id),
-    enrollment_session_id VARCHAR(100) REFERENCES enrollment_sessions(enrollment_session_id),
-    aggregate_embedding JSONB, -- Store embeddings as JSONB
+    id SERIAL PRIMARY KEY,
+    template_id UUID UNIQUE,
+    employee_id INTEGER REFERENCES employees(id),
+    enrollment_session_id INTEGER REFERENCES enrollment_sessions(id),
+    aggregate_embedding JSONB,
     reference_image_url TEXT,
     sample_count INTEGER,
     quality_avg DECIMAL(5, 4),
     liveness_avg DECIMAL(5, 4),
     is_active BOOLEAN DEFAULT FALSE,
     approval_status VARCHAR(50) DEFAULT 'PENDING_APPROVAL',
-    approved_by UUID REFERENCES users(user_id),
+    approved_by INTEGER REFERENCES users(id),
     approved_at TIMESTAMP WITH TIME ZONE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
@@ -117,10 +126,11 @@ CREATE TABLE IF NOT EXISTS face_templates (
 
 -- 9. Attendance Logs
 CREATE TABLE IF NOT EXISTS attendance_logs (
-    attendance_id UUID PRIMARY KEY,
-    employee_id UUID REFERENCES employees(employee_id),
-    office_id UUID REFERENCES offices(office_id),
-    shift_id UUID REFERENCES shifts(shift_id),
+    id SERIAL PRIMARY KEY,
+    attendance_id UUID UNIQUE,
+    employee_id INTEGER REFERENCES employees(id),
+    office_id INTEGER REFERENCES offices(id),
+    shift_id INTEGER REFERENCES shifts(id),
     event_type VARCHAR(50) NOT NULL, -- 'CHECK_IN', 'CHECK_OUT'
     attendance_date DATE NOT NULL,
     event_timestamp TIMESTAMP WITH TIME ZONE NOT NULL,
@@ -143,8 +153,8 @@ CREATE TABLE IF NOT EXISTS attendance_logs (
 
 -- 10. Attendance Daily Summary
 CREATE TABLE IF NOT EXISTS attendance_daily_summary (
-    id UUID PRIMARY KEY,
-    employee_id UUID REFERENCES employees(employee_id),
+    id SERIAL PRIMARY KEY,
+    employee_id INTEGER REFERENCES employees(id),
     attendance_date DATE NOT NULL,
     first_check_in TIMESTAMP WITH TIME ZONE,
     last_check_out TIMESTAMP WITH TIME ZONE,
@@ -157,8 +167,9 @@ CREATE TABLE IF NOT EXISTS attendance_daily_summary (
 
 -- 11. Geofences
 CREATE TABLE IF NOT EXISTS geofences (
-    geofence_id UUID PRIMARY KEY,
-    office_id UUID REFERENCES offices(office_id),
+    id SERIAL PRIMARY KEY,
+    geofence_id UUID UNIQUE,
+    office_id INTEGER REFERENCES offices(id),
     geofence_name VARCHAR(255),
     latitude DECIMAL(10, 8) NOT NULL,
     longitude DECIMAL(11, 8) NOT NULL,
@@ -170,8 +181,9 @@ CREATE TABLE IF NOT EXISTS geofences (
 
 -- 12. Attendance Policies
 CREATE TABLE IF NOT EXISTS attendance_policies (
-    policy_id UUID PRIMARY KEY,
-    office_id UUID REFERENCES offices(office_id) UNIQUE,
+    id SERIAL PRIMARY KEY,
+    policy_id UUID UNIQUE,
+    office_id INTEGER REFERENCES offices(id) UNIQUE,
     require_face_match BOOLEAN DEFAULT TRUE,
     require_liveness BOOLEAN DEFAULT TRUE,
     require_geofence BOOLEAN DEFAULT TRUE,
@@ -186,14 +198,15 @@ CREATE TABLE IF NOT EXISTS attendance_policies (
 
 -- 13. Attendance Exceptions
 CREATE TABLE IF NOT EXISTS attendance_exceptions (
-    exception_id UUID PRIMARY KEY,
-    employee_id UUID REFERENCES employees(employee_id),
+    id SERIAL PRIMARY KEY,
+    exception_id UUID UNIQUE,
+    employee_id INTEGER REFERENCES employees(id),
     exception_type VARCHAR(100) NOT NULL,
     event_date DATE NOT NULL,
     reason TEXT,
     status VARCHAR(50) DEFAULT 'PENDING', -- 'PENDING', 'APPROVED', 'REJECTED'
     review_remarks TEXT,
-    reviewed_by UUID REFERENCES users(user_id),
+    reviewed_by INTEGER REFERENCES users(id),
     reviewed_at TIMESTAMP WITH TIME ZONE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
@@ -201,8 +214,9 @@ CREATE TABLE IF NOT EXISTS attendance_exceptions (
 
 -- 14. Device Registry
 CREATE TABLE IF NOT EXISTS device_registry (
-    device_registry_id UUID PRIMARY KEY,
-    employee_id UUID REFERENCES employees(employee_id),
+    id SERIAL PRIMARY KEY,
+    device_registry_id UUID UNIQUE,
+    employee_id INTEGER REFERENCES employees(id),
     device_id VARCHAR(255) NOT NULL,
     device_name VARCHAR(255),
     device_model VARCHAR(255),
@@ -219,8 +233,9 @@ CREATE TABLE IF NOT EXISTS device_registry (
 
 -- 15. Audit Logs
 CREATE TABLE IF NOT EXISTS audit_logs (
-    audit_id UUID PRIMARY KEY,
-    actor_user_id UUID, -- Not enforced FK because it might be system or deleted user
+    id SERIAL PRIMARY KEY,
+    audit_id UUID UNIQUE,
+    actor_user_id INTEGER, -- References users(id) but not enforced if system/deleted
     actor_role VARCHAR(50),
     action_type VARCHAR(100) NOT NULL,
     entity_name VARCHAR(100),

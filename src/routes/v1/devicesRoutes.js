@@ -1,5 +1,5 @@
 const router = require('express').Router();
-const ctrl   = require('../../controllers/v1/devicesController');
+const ctrl   = require('../../controllers/deviceController');
 const { authenticate, authorize } = require('../../middleware/auth');
 
 router.use(authenticate);

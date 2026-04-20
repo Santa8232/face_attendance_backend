@@ -1,28 +1,11 @@
-/**
- * Face Verification Controller
- *
- * POST /api/v1/face/verify
- *
- * In the JSON-store phase the device has already run the on-device ML pipeline
- * and sends the resulting scores + metadata.  The server:
- *   1. Looks up the employee's active face template
- *   2. Validates the confidence / liveness scores
- *   3. Issues a short-lived verification token the attendance endpoint will consume
- *   4. Returns match result + risk flags
- *
- * When a real backend face-matching service is integrated later, replace the
- * score-pass-through logic with an actual embedding comparison call.
- */
-
 const { v4: uuidv4 } = require("uuid");
 const store = require("../db/store");
 const { TABLES } = store;
-const { asyncHandler, ok, fail } = require("../utils/helpers");
+const { asyncHandler, ok, fail, toISTString } = require("../utils/helpers");
 const { FACE_MATCH_THRESHOLD } = require("../config/constants");
 
-// In-memory verification token store (replace with Redis/DB in Phase II)
 const verificationTokens = new Map();
-const TOKEN_TTL_MS = 5 * 60 * 1000; // 5 minutes
+const TOKEN_TTL_MS = 5 * 60 * 1000;
 
 function cosineSimilarity(vecA, vecB) {
   if (!vecA || !vecB || vecA.length !== vecB.length) return 0;
@@ -45,32 +28,49 @@ const verifyFace = asyncHandler(async (req, res) => {
     liveness_meta = {},
   } = req.body;
 
-  // Parse JSON strings if they arrive as such (common with multipart/form-data)
   if (typeof capture_meta === 'string') {
-    try { capture_meta = JSON.parse(capture_meta); } catch (e) {}
+    try { capture_meta = JSON.parse(capture_meta); } catch (e) { capture_meta = {}; }
   }
   if (typeof liveness_meta === 'string') {
-    try { liveness_meta = JSON.parse(liveness_meta); } catch (e) {}
+    try { liveness_meta = JSON.parse(liveness_meta); } catch (e) { liveness_meta = {}; }
   }
 
-  const empId = employee_id || req.user?.employee_id;
-  if (!empId) return fail(res, "employee_id is required");
+  // Fallback for face_embedding if it's not in capture_meta but in root body
+  const currentEmbedding = capture_meta?.face_embedding || capture_meta?.embedding || req.body.face_embedding || req.body.embedding;
+  if (currentEmbedding && !capture_meta.face_embedding) {
+    capture_meta.face_embedding = currentEmbedding;
+  }
+
+  const empIdOrUuid = employee_id || req.user?.employee_id;
+  if (!empIdOrUuid) return fail(res, "employee_id is required");
+  
+  if (req.files) {
+    console.log('[DEBUG] verifyFace req.files fields:', req.files.map(f => f.fieldname));
+    if (!req.file && req.files.length > 0) {
+      req.file = req.files.find(f => f.fieldname === 'image' || f.fieldname === 'file');
+    }
+  }
+
   if (!image_base64 && !req.file)
     return fail(res, "image_base64 or image file is required");
 
-  // ── Look up employee + active template ───────────────────────────────────
-  const emp = await store.getById(
-    TABLES.EMPLOYEES,
-    "employee_id",
-    String(empId),
-  );
+  console.log('[DEBUG] verifyFace req.body keys:', Object.keys(req.body));
+  console.log('[DEBUG] face_embedding detected:', !!capture_meta?.face_embedding);
+
+  // Lookup by integer 'id' (primary) or UUID 'employee_id' (legacy/external)
+  let emp;
+  if (empIdOrUuid && typeof empIdOrUuid === 'string' && empIdOrUuid.includes('-')) {
+    emp = await store.findOne(TABLES.EMPLOYEES, { employee_id: empIdOrUuid });
+  } else {
+    emp = await store.getById(TABLES.EMPLOYEES, empIdOrUuid);
+  }
   if (!emp || !emp.is_active)
     return fail(res, "Employee not found or inactive", 404);
   if (!emp.face_enrolled)
     return fail(res, "Employee has no enrolled face template", 400);
 
   const template = await store.findOne(TABLES.FACE_TEMPLATES, { 
-    employee_id: String(empId), 
+    employee_id: emp.id, 
     is_active: true 
   });
   if (!template) return fail(res, "No active face template found", 404);
@@ -88,11 +88,11 @@ const verifyFace = asyncHandler(async (req, res) => {
     matchScore = cosineSimilarity(capture_meta.face_embedding, enrolledEmbedding);
     matched = matchScore >= FACE_MATCH_THRESHOLD;
     
-    console.log(`[BIOMETRIC] Employee: ${employee_id}`);
+    console.log(`[BIOMETRIC] Employee: ${emp.id}`);
     console.log(`[BIOMETRIC] Similarity: ${matchScore.toFixed(4)} (Threshold: ${FACE_MATCH_THRESHOLD})`);
     console.log(`[BIOMETRIC] Result: ${matched ? 'MATCH' : 'NO MATCH'}`);
   } else {
-    console.warn(`[SECURITY] Verification attempted without embeddings for employee: ${employee_id}`);
+    console.warn(`[SECURITY] Verification attempted without embeddings for employee: ${emp.id}`);
     return fail(res, 'Biometric data missing. Please re-enroll.', 401);
   }
 
@@ -119,8 +119,8 @@ const verifyFace = asyncHandler(async (req, res) => {
   // ── Issue short-lived verification token ─────────────────────────────────
   const token = `fvt_${uuidv4().replace(/-/g, "")}`;
   verificationTokens.set(token, {
-    employee_id: String(empId),
-    template_id: template.template_id,
+    employee_id: emp.id,
+    template_id: template.id,
     confidence: matchScore,
     liveness_score: livenessScore,
     device_id: device_id || null,
@@ -133,18 +133,18 @@ const verifyFace = asyncHandler(async (req, res) => {
   // Audit
   await store.insert(TABLES.AUDIT_LOGS, {
     audit_id: uuidv4(),
-    actor_user_id: req.user?.user_id || null,
+    actor_user_id: req.user?.id || null,
     actor_role: req.user?.role || null,
     action_type: "FACE_VERIFY",
     entity_name: "face_templates",
-    entity_id: template.template_id,
+    entity_id: String(template.id),
     new_value_json: JSON.stringify({
       matched,
       match_score: matchScore,
       risk_flags: riskFlags,
     }),
     device_id: device_id || null,
-    created_at: new Date().toISOString(),
+    created_at: toISTString(),
   });
 
   return ok(
@@ -152,7 +152,7 @@ const verifyFace = asyncHandler(async (req, res) => {
     {
       matched,
       confidence: matchScore,
-      template_id: template.template_id,
+      id: template.id,
       risk_flags: riskFlags,
       verification_token: token,
       token_expires_in: `${TOKEN_TTL_MS / 60000} minutes`,
@@ -161,7 +161,6 @@ const verifyFace = asyncHandler(async (req, res) => {
   );
 });
 
-// ── Exported helper: consume and validate a verification token ────────────────
 function consumeVerificationToken(token) {
   const payload = verificationTokens.get(token);
   if (!payload) return null;

@@ -75,11 +75,11 @@ const definition = {
               employee: {
                 type: "object",
                 properties: {
-                  employee_id: { type: "string", format: "uuid" },
+                  id: { type: "integer", example: 1 },
                   employee_code: { type: "string" },
                   name: { type: "string" },
                   role: { type: "string", enum: ["admin", "hr", "employee"] },
-                  office_id: { type: "string" },
+                  office_id: { type: "integer" },
                 },
               },
             },
@@ -91,11 +91,12 @@ const definition = {
       Employee: {
         type: "object",
         properties: {
-          employee_id: { type: "string", format: "uuid" },
-          user_id: { type: "string", nullable: true },
-          office_id: { type: "string" },
-          department_id: { type: "string", nullable: true },
-          shift_id: { type: "string", nullable: true },
+          id: { type: "integer", example: 1 },
+          user_id: { type: "integer", nullable: true },
+          office_id: { type: "integer" },
+          department_id: { type: "integer", nullable: true },
+          shift_id: { type: "integer", nullable: true },
+          employee_id: { type: "string", format: "uuid", description: "Legacy UUID" },
           employee_code: { type: "string", example: "EMP001" },
           full_name: { type: "string", example: "John Doe" },
           email: { type: "string", format: "email" },
@@ -116,7 +117,8 @@ const definition = {
       Office: {
         type: "object",
         properties: {
-          office_id: { type: "string", format: "uuid" },
+          id: { type: "integer", example: 1 },
+          office_id: { type: "string", format: "uuid", description: "Legacy UUID" },
           office_name: { type: "string", example: "HQ" },
           address: { type: "string", nullable: true },
           city: { type: "string", example: "Mumbai" },
@@ -132,8 +134,8 @@ const definition = {
       Department: {
         type: "object",
         properties: {
-          department_id: { type: "string", format: "uuid" },
-          office_id: { type: "string", format: "uuid" },
+          id: { type: "integer", example: 1 },
+          office_id: { type: "integer" },
           department_name: { type: "string", example: "Engineering" },
           created_at: { type: "string", format: "date-time" },
           updated_at: { type: "string", format: "date-time" },
@@ -142,8 +144,8 @@ const definition = {
       Shift: {
         type: "object",
         properties: {
-          shift_id: { type: "string", format: "uuid" },
-          office_id: { type: "string", format: "uuid" },
+          id: { type: "integer", example: 1 },
+          office_id: { type: "integer" },
           shift_name: { type: "string", example: "Day Shift" },
           start_time: { type: "string", example: "09:00" },
           end_time: { type: "string", example: "18:00" },
@@ -159,8 +161,7 @@ const definition = {
         type: "object",
         properties: {
           employee_id: {
-            type: "string",
-            format: "uuid",
+            type: "integer",
             description: "Optional; inferred from JWT if missing",
           },
           device_id: { type: "string", example: "device-uuid-123" },
@@ -189,9 +190,9 @@ const definition = {
       AttendanceLog: {
         type: "object",
         properties: {
-          attendance_id: { type: "string", format: "uuid" },
-          employee_id: { type: "string" },
-          office_id: { type: "string" },
+          id: { type: "integer" },
+          employee_id: { type: "integer" },
+          office_id: { type: "integer" },
           event_type: { type: "string", enum: ["CHECK_IN", "CHECK_OUT"] },
           attendance_date: { type: "string", format: "date" },
           event_timestamp: { type: "string", format: "date-time" },
@@ -343,7 +344,7 @@ const definition = {
         tags: ["Employees"],
         summary: "List employees (ADMIN / HR)",
         parameters: [
-          { name: "office_id", in: "query", schema: { type: "string" } },
+          { name: "office_id", in: "query", schema: { type: "integer" } },
           {
             name: "status",
             in: "query",
@@ -382,7 +383,7 @@ const definition = {
             name: "id",
             in: "path",
             required: true,
-            schema: { type: "string" },
+            schema: { type: "integer" },
           },
         ],
         requestBody: {
@@ -414,7 +415,7 @@ const definition = {
               schema: {
                 type: "object",
                 properties: {
-                  employee_id: { type: "string" },
+                  employee_id: { type: "integer" },
                   device_id: { type: "string" },
                 },
               },
@@ -485,7 +486,7 @@ const definition = {
             name: "template_id",
             in: "path",
             required: true,
-            schema: { type: "string" },
+            schema: { type: "integer" },
           },
         ],
         responses: { 200: { description: "Approved" } },
@@ -500,7 +501,7 @@ const definition = {
             name: "employee_id",
             in: "path",
             required: true,
-            schema: { type: "string" },
+            schema: { type: "integer" },
           },
         ],
         responses: { 200: { description: "Reset" } },
@@ -518,7 +519,7 @@ const definition = {
                 type: "object",
                 properties: {
                   employee_id: {
-                    type: "string",
+                    type: "integer",
                     description: "Optional; inferred from JWT",
                   },
                   image: { type: "string", format: "binary" },
@@ -529,7 +530,7 @@ const definition = {
               schema: {
                 type: "object",
                 properties: {
-                  employee_id: { type: "string" },
+                  employee_id: { type: "integer" },
                   image_base64: { type: "string" },
                 },
               },
@@ -625,7 +626,7 @@ const definition = {
         tags: ["Management"],
         summary: "List shifts",
         parameters: [
-          { name: "office_id", in: "query", schema: { type: "string" } },
+          { name: "office_id", in: "query", schema: { type: "integer" } },
         ],
         responses: {
           200: {
@@ -653,8 +654,8 @@ const definition = {
               schema: {
                 type: "object",
                 properties: {
-                  employee_id: { type: "string" },
-                  shift_id: { type: "string" },
+                  employee_id: { type: "integer" },
+                  shift_id: { type: "integer" },
                 },
               },
             },
@@ -668,7 +669,7 @@ const definition = {
         tags: ["Management"],
         summary: "Get attendance policy",
         parameters: [
-          { name: "office_id", in: "query", schema: { type: "string" } },
+          { name: "office_id", in: "query", schema: { type: "integer" } },
         ],
         responses: {
           200: {
@@ -683,7 +684,7 @@ const definition = {
         tags: ["Management"],
         summary: "List geofences",
         parameters: [
-          { name: "office_id", in: "query", schema: { type: "string" } },
+          { name: "office_id", in: "query", schema: { type: "integer" } },
         ],
         responses: {
           200: {
@@ -710,7 +711,7 @@ const definition = {
                 properties: {
                   latitude: { type: "number" },
                   longitude: { type: "number" },
-                  office_id: { type: "string" },
+                  office_id: { type: "integer" },
                 },
               },
             },
@@ -755,7 +756,7 @@ const definition = {
             name: "id",
             in: "path",
             required: true,
-            schema: { type: "string" },
+            schema: { type: "integer" },
           },
         ],
         responses: { 200: { description: "Reviewed" } },

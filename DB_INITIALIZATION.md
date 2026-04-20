@@ -1,6 +1,6 @@
 # Database Initialization Guide 🐘
 
-This guide covers the steps required to initialize the PostgreSQL database and migrate existing JSON data into the new persistent storage layer.
+This guide covers the steps required to initialize the PostgreSQL database and migrate existing JSON data into the new persistent storage layer using **auto-incrementing integer (SERIAL) primary keys**.
 
 ---
 
@@ -23,6 +23,7 @@ DB_NAME=facial
 To create the necessary tables and indices, run the initialization script. If you are updating an existing database and need to start fresh, use the `--reset` flag.
 
 ### **Fresh Setup / Reset**
+
 > [!CAUTION]
 > The `--reset` flag will drop all existing tables and data.
 
@@ -31,6 +32,7 @@ node src/db/initDb.js --reset
 ```
 
 ### **Standard Initialization**
+
 ```bash
 node src/db/initDb.js
 ```
@@ -57,6 +59,13 @@ npm run dev
 
 You should see the following in your logs:
 `🐘 PostgreSQL connected successfully`
+
+---
+
+## Technical Notes
+
+- **Biometric Data**: The schema includes a `face_embedding` column in `enrollment_samples` (JSONB) and `aggregate_embedding` in `face_templates`. These are essential for the face matching engine.
+- **Aggregation**: The enrollment completion process now calculates a mathematical average of multiple face samples to increase verification accuracy.
 
 ---
 

@@ -4,8 +4,9 @@ const { authenticate, authorize } = require('../middleware/auth');
 
 router.use(authenticate);
 
-router.get   ('/',     authorize('ADMIN','HR'), ctrl.listDevices);
+router.get   ('/',         authorize('ADMIN','HR'), ctrl.listDevices);
 router.post  ('/register', ctrl.registerDevice);
-router.delete('/:id',  authorize('ADMIN'),      ctrl.untrustDevice);
+router.post  ('/rebind',   ctrl.rebindDevice);
+router.delete('/:id',      authorize('ADMIN'),      ctrl.untrustDevice);
 
 module.exports = router;

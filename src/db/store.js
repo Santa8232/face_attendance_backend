@@ -31,8 +31,10 @@ async function getAll(table) {
   return rows;
 }
 
-async function getById(table, idField, id) {
-  const { rows } = await query(`SELECT * FROM ${table} WHERE ${idField} = $1`, [id]);
+async function getById(table, idOrField, id) {
+  const field = id === undefined ? 'id' : idOrField;
+  const val   = id === undefined ? idOrField : id;
+  const { rows } = await query(`SELECT * FROM ${table} WHERE ${field} = $1`, [val]);
   return rows[0] || null;
 }
 
@@ -81,20 +83,34 @@ async function insert(table, record) {
   return rows[0];
 }
 
-async function update(table, idField, id, changes) {
-  const keys = Object.keys(changes);
-  if (keys.length === 0) return getById(table, idField, id);
+async function update(table, idOrField, idOrChanges, changes) {
+  let field, id, finalChanges;
+  
+  if (changes === undefined) {
+    field = 'id';
+    id = idOrField;
+    finalChanges = idOrChanges;
+  } else {
+    field = idOrField;
+    id = idOrChanges;
+    finalChanges = changes;
+  }
+
+  const keys = Object.keys(finalChanges);
+  if (keys.length === 0) return getById(table, field, id);
 
   const setClause = keys.map((k, i) => `${k} = $${i + 2}`).join(', ');
-  const values = [id, ...Object.values(changes)];
+  const values = [id, ...Object.values(finalChanges)];
 
-  const sql = `UPDATE ${table} SET ${setClause}, updated_at = CURRENT_TIMESTAMP WHERE ${idField} = $1 RETURNING *`;
+  const sql = `UPDATE ${table} SET ${setClause}, updated_at = CURRENT_TIMESTAMP WHERE ${field} = $1 RETURNING *`;
   const { rows } = await query(sql, values);
   return rows[0] || null;
 }
 
-async function remove(table, idField, id) {
-  const { rowCount } = await query(`DELETE FROM ${table} WHERE ${idField} = $1`, [id]);
+async function remove(table, idOrField, id) {
+  const field = id === undefined ? 'id' : idOrField;
+  const val   = id === undefined ? idOrField : id;
+  const { rowCount } = await query(`DELETE FROM ${table} WHERE ${field} = $1`, [val]);
   return rowCount > 0;
 }
 

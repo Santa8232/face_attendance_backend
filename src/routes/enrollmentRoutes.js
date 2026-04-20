@@ -8,7 +8,6 @@ router.use(authenticate);
 // Set upload sub-directory for enrollment images
 router.use((req, _res, next) => { req.uploadSubDir = 'enrollment'; next(); });
 
-router.post('/:employeeId/status',  ctrl.enrollmentStatus);           // GET semantically but POST to avoid URL conflicts
 router.get ('/:employeeId/status',  ctrl.enrollmentStatus);
 router.post('/start',               ctrl.startEnrollment);
 router.post('/:sessionId/sample',   upload.single('image'), ctrl.uploadSample);
