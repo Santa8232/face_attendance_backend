@@ -6,19 +6,12 @@ const { asyncHandler, ok, fail, getISTDate } = require("../utils/helpers");
 // ── GET /api/v1/employees ───────────────────────────────────────────────────────
 const listEmployees = asyncHandler(async (req, res) => {
   const { office_id, department_id, is_active } = req.query;
-  let employees = await store.getAll(TABLES.EMPLOYEES);
+  const query = {};
+  if (office_id) query.office_id = parseInt(office_id);
+  if (department_id) query.department_id = parseInt(department_id);
+  if (is_active !== undefined) query.is_active = is_active === "true";
 
-  if (office_id)
-    employees = employees.filter((e) => e.office_id === parseInt(office_id));
-  if (department_id)
-    employees = employees.filter(
-      (e) => e.department_id === parseInt(department_id),
-    );
-  if (is_active !== undefined) {
-    const active = is_active === "true";
-    employees = employees.filter((e) => e.is_active === active);
-  }
-
+  const employees = await store.findMany(TABLES.EMPLOYEES, query);
   return ok(res, employees);
 });
 
@@ -138,8 +131,27 @@ const updateStatus = asyncHandler(async (req, res) => {
 const getMyProfile = asyncHandler(async (req, res) => {
   const emp = await store.findOne(TABLES.EMPLOYEES, { user_id: req.user.id });
   if (!emp) return fail(res, "Employee profile not found", 404);
-  return ok(res, emp);
+
+  // Fetch geofence for the employee's office
+  const geofence = await store.findOne(TABLES.GEOFENCES, {
+    office_id: emp.office_id,
+    is_active: true,
+  });
+
+  return ok(res, {
+    ...emp,
+    geofence: geofence
+      ? {
+          id: geofence.id,
+          name: geofence.geofence_name,
+          latitude: parseFloat(geofence.latitude),
+          longitude: parseFloat(geofence.longitude),
+          radius_m: geofence.radius_m,
+        }
+      : null,
+  });
 });
+
 
 // ── GET /api/v1/employees/:id/recent-activities ───────────────────────────────
 const getRecentActivities = asyncHandler(async (req, res) => {

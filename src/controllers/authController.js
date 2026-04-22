@@ -14,7 +14,16 @@ const revokedTokens = new Set();
 
 // ── POST /api/v1/auth/login ─────────────────────────────────────────────────────
 const login = asyncHandler(async (req, res) => {
-  const { username, email, password, device_id, device_name } = req.body;
+  const {
+    username,
+    email,
+    password,
+    device_id,
+    device_name,
+    device_model,
+    os_version,
+    app_version,
+  } = req.body;
   const identifier = (username || email || "").toLowerCase().trim();
 
   if (!identifier || !password)
@@ -82,6 +91,9 @@ const login = asyncHandler(async (req, res) => {
     if (existing) {
       await store.update(TABLES.DEVICE_REGISTRY, existing.id, {
         device_name: device_name || existing.device_name,
+        device_model: device_model || existing.device_model,
+        os_version: os_version || existing.os_version,
+        app_version: app_version || existing.app_version,
         last_seen_at: new Date().toISOString(),
       });
     } else {
@@ -90,6 +102,9 @@ const login = asyncHandler(async (req, res) => {
         employee_id: employee.id,
         device_id,
         device_name: device_name || null,
+        device_model: device_model || null,
+        os_version: os_version || null,
+        app_version: app_version || null,
         is_trusted: true,
         trust_score: 1.0,
         registered_at: new Date().toISOString(),
@@ -109,6 +124,14 @@ const login = asyncHandler(async (req, res) => {
     created_at: new Date().toISOString(),
   });
 
+  // Fetch geofence for the employee's office
+  const geofence = employee
+    ? await store.findOne(TABLES.GEOFENCES, {
+        office_id: employee.office_id,
+        is_active: true,
+      })
+    : null;
+
   return ok(
     res,
     {
@@ -123,6 +146,15 @@ const login = asyncHandler(async (req, res) => {
             office_id: employee.office_id,
             role: user.role,
             face_enrolled: employee.face_enrolled,
+          }
+        : null,
+      geofence: geofence
+        ? {
+            id: geofence.id,
+            name: geofence.geofence_name,
+            latitude: parseFloat(geofence.latitude),
+            longitude: parseFloat(geofence.longitude),
+            radius_m: geofence.radius_m,
           }
         : null,
     },

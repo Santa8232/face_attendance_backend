@@ -6,13 +6,17 @@ const { asyncHandler, ok, fail } = require('../utils/helpers');
 // ── GET /api/v1/devices ──────────────────────────────────────────────────────────
 const listDevices = asyncHandler(async (req, res) => {
   const { employee_id } = req.query;
-  let devices = await store.getAll(TABLES.DEVICE_REGISTRY);
-  if (employee_id) devices = devices.filter(d => d.employee_id === parseInt(employee_id));
-  if (req.user.role === 'EMPLOYEE') {
-    devices = devices.filter(d => d.employee_id === req.user.employee_id);
+  const query = {};
+  if (employee_id) query.employee_id = parseInt(employee_id);
+
+  if (req.user.role === "EMPLOYEE") {
+    query.employee_id = req.user.employee_id;
   }
+
+  const devices = await store.findMany(TABLES.DEVICE_REGISTRY, query);
   return ok(res, devices);
 });
+
 
 // ── POST /api/v1/devices/register ────────────────────────────────────────────────
 const registerDevice = asyncHandler(async (req, res) => {

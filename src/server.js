@@ -12,14 +12,6 @@ const swaggerSpec   = require('./config/swagger');
 
 const { PORT, UPLOAD_DIR } = require('./config/constants');
 
-// ── Routes (legacy) ───────────────────────────────────────────────────────────
-const authRoutes       = require('./routes/authRoutes');
-const employeeRoutes   = require('./routes/employeeRoutes');
-const enrollmentRoutes = require('./routes/enrollmentRoutes');
-const attendanceRoutes = require('./routes/attendanceRoutes');
-const adminRoutes      = require('./routes/adminRoutes');
-const deviceRoutes     = require('./routes/deviceRoutes');
-
 // ── Routes (v1 spec-compliant) ────────────────────────────────────────────────
 const v1AuthRoutes       = require('./routes/v1/authRoutes');
 const v1EmployeeRoutes   = require('./routes/v1/employeeRoutes');
@@ -31,7 +23,7 @@ const v1GeofenceRoutes   = require('./routes/v1/geofenceRoutes');
 const v1DevicesRoutes    = require('./routes/v1/devicesRoutes');
 const v1ExceptionsRoutes = require('./routes/v1/exceptionsRoutes');
 const v1ReportsRoutes    = require('./routes/v1/reportsRoutes');
-const loggerMiddleware   = require('./middlewares/loggerMiddleware');
+const loggerMiddleware   = require('./middleware/logger');
 
 const app = express();
 
@@ -61,14 +53,6 @@ app.get('/health', (_req, res) => {
   });
 });
 
-// ── API routes ────────────────────────────────────────────────────────────────
-app.use('/api/auth',       authRoutes);
-app.use('/api/employees',  employeeRoutes);
-app.use('/api/enrollment', enrollmentRoutes);
-app.use('/api/attendance', attendanceRoutes);
-app.use('/api/admin',      adminRoutes);
-app.use('/api/devices',    deviceRoutes);
-
 // ── v1 routes (spec-compliant) ────────────────────────────────────────────────
 app.use('/api/v1/auth',        v1AuthRoutes);
 app.use('/api/v1/employees',   v1EmployeeRoutes);
@@ -80,6 +64,7 @@ app.use('/api/v1/geofences',   v1GeofenceRoutes);
 app.use('/api/v1/devices',     v1DevicesRoutes);
 app.use('/api/v1/exceptions',  v1ExceptionsRoutes);
 app.use('/api/v1/reports',     v1ReportsRoutes);
+
 
 // ── 404 handler ───────────────────────────────────────────────────────────────
 app.use((_req, res) => {

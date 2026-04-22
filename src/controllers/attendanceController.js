@@ -262,18 +262,24 @@ const listAttendance = asyncHandler(async (req, res) => {
     limit = 50,
   } = req.query;
 
-  let logs = await store.getAll(TABLES.ATTENDANCE_LOGS);
-
+  const query = {};
   if (req.user.role === "EMPLOYEE") {
-    logs = logs.filter((l) => l.employee_id === req.user.employee_id);
+    query.employee_id = req.user.employee_id;
   } else {
-    if (employee_id)
-      logs = logs.filter((l) => l.employee_id === parseInt(employee_id));
-    if (office_id)
-      logs = logs.filter((l) => l.office_id === parseInt(office_id));
+    if (employee_id) query.employee_id = parseInt(employee_id);
+    if (office_id) query.office_id = parseInt(office_id);
   }
 
-  // Format dates for SQL consistency
+  if (event_type) query.event_type = event_type.toUpperCase();
+  if (date) query.attendance_date = date;
+
+  let logs = await store.findMany(TABLES.ATTENDANCE_LOGS, query);
+
+  // Filter by date range if provided
+  if (from_date) logs = logs.filter((l) => l.event_timestamp >= from_date);
+  if (to_date) logs = logs.filter((l) => l.event_timestamp <= to_date + "T23:59:59Z");
+
+  // Format dates for display
   logs = logs.map((l) => ({
     ...l,
     attendance_date:
@@ -281,10 +287,6 @@ const listAttendance = asyncHandler(async (req, res) => {
         ? getISTDate(l.attendance_date)
         : String(l.attendance_date).slice(0, 10),
   }));
-
-  if (event_type)
-    logs = logs.filter((l) => l.event_type === event_type.toUpperCase());
-  if (date) logs = logs.filter((l) => l.attendance_date === date);
 
   logs.sort(
     (a, b) => new Date(b.event_timestamp) - new Date(a.event_timestamp),
@@ -366,25 +368,24 @@ const syncOffline = asyncHandler(async (req, res) => {
 const todaySummary = asyncHandler(async (req, res) => {
   const today = getISTDate();
   const { office_id } = req.query;
-  const logs = await store.findMany(TABLES.ATTENDANCE_LOGS, (l) => {
-    const d =
-      l.attendance_date instanceof Date
-        ? getISTDate(l.attendance_date)
-        : String(l.attendance_date).slice(0, 10);
-    return d === today && (!office_id || l.office_id === parseInt(office_id));
-  });
+
+  const query = { attendance_date: today };
+  if (office_id) query.office_id = parseInt(office_id);
+
+  const logs = await store.findMany(TABLES.ATTENDANCE_LOGS, query);
+
   const checkedIn = new Set(
     logs.filter((l) => l.event_type === "CHECK_IN").map((l) => l.employee_id),
   );
   const checkedOut = new Set(
     logs.filter((l) => l.event_type === "CHECK_OUT").map((l) => l.employee_id),
   );
-  const total = (
-    await store.findMany(
-      TABLES.EMPLOYEES,
-      (e) => e.is_active && (!office_id || e.office_id === parseInt(office_id)),
-    )
-  ).length;
+
+  const empQuery = { is_active: true };
+  if (office_id) empQuery.office_id = parseInt(office_id);
+
+  const totalEmps = await store.findMany(TABLES.EMPLOYEES, empQuery);
+  const total = totalEmps.length;
 
   return ok(res, {
     date: today,
@@ -398,7 +399,15 @@ const todaySummary = asyncHandler(async (req, res) => {
 
 const getDailySummary = asyncHandler(async (req, res) => {
   const { employee_id, date } = req.query;
-  let summaries = await store.getAll(TABLES.ATTENDANCE_SUMMARY);
+  const query = {};
+  if (employee_id) query.employee_id = parseInt(employee_id);
+  if (date) query.attendance_date = date;
+
+  if (req.user.role === "EMPLOYEE") {
+    query.employee_id = req.user.employee_id;
+  }
+
+  let summaries = await store.findMany(TABLES.ATTENDANCE_SUMMARY, query);
 
   // Format dates
   summaries = summaries.map((s) => ({
@@ -409,15 +418,9 @@ const getDailySummary = asyncHandler(async (req, res) => {
         : String(s.attendance_date).slice(0, 10),
   }));
 
-  if (employee_id)
-    summaries = summaries.filter(
-      (s) => s.employee_id === parseInt(employee_id),
-    );
-  if (date) summaries = summaries.filter((s) => s.attendance_date === date);
-  if (req.user.role === "EMPLOYEE")
-    summaries = summaries.filter((s) => s.employee_id === req.user.employee_id);
   return ok(res, summaries);
 });
+
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 async function resolveShiftStatus(emp, eventType, eventTs) {
