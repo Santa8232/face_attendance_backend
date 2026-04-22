@@ -374,6 +374,33 @@ const definition = {
         responses: { 200: { description: "Own profile" } },
       },
     },
+    "/api/v1/employees/{id}/recent-activities": {
+      get: {
+        tags: ["Employees"],
+        summary: "Get recent activities for an employee (ADMIN / HR)",
+        parameters: [
+          {
+            name: "id",
+            in: "path",
+            required: true,
+            schema: { type: "integer" },
+          },
+        ],
+        responses: {
+          200: {
+            description: "List of recent attendance logs",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "array",
+                  items: { $ref: "#/components/schemas/AttendanceLog" },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
     "/api/v1/employees/{id}/status": {
       patch: {
         tags: ["Employees"],

@@ -10,5 +10,6 @@ router.get   ('/:id',             authorize('ADMIN','HR'), ctrl.getEmployee);
 router.post  ('/',                authorize('ADMIN'),       ctrl.createEmployee);
 router.put   ('/:id',             authorize('ADMIN','HR'), ctrl.updateEmployee);
 router.patch ('/:id/status',      authorize('ADMIN'),       ctrl.updateStatus);
+router.get   ('/:id/recent-activities', authorize('ADMIN','HR','EMPLOYEE'), ctrl.getRecentActivities);
 
 module.exports = router;
