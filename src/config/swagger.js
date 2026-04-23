@@ -53,7 +53,10 @@ const definition = {
           },
           password: { type: "string", example: "Emp@1234" },
           device_id: { type: "string", example: "a1b2c3d4e5" },
-          device_name: { type: "string", example: "Pixel 8" },
+          device_name: { type: "string", example: "Google" },
+          device_model: { type: "string", example: "Pixel 8" },
+          os_version: { type: "string", example: "Android 14" },
+          app_version: { type: "string", example: "1.0.0" },
         },
       },
       LoginResponse: {
@@ -80,6 +83,17 @@ const definition = {
                   name: { type: "string" },
                   role: { type: "string", enum: ["admin", "hr", "employee"] },
                   office_id: { type: "integer" },
+                },
+              },
+              geofence: {
+                type: "object",
+                nullable: true,
+                properties: {
+                  id: { type: "integer" },
+                  name: { type: "string" },
+                  latitude: { type: "number" },
+                  longitude: { type: "number" },
+                  radius_m: { type: "number" },
                 },
               },
             },
@@ -567,6 +581,38 @@ const definition = {
         responses: {
           200: {
             description: "Verification successful",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: { verification_token: { type: "string" } },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+    "/api/v1/face/verify-biometric": {
+      post: {
+        tags: ["Face Verification"],
+        summary: "Verify using device biometrics and get short-lived token",
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                properties: {
+                  device_id: { type: "string" },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          200: {
+            description: "Biometric verification successful",
             content: {
               "application/json": {
                 schema: {

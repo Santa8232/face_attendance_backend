@@ -8,7 +8,8 @@ router.use(authenticate);
 router.use((req, _res, next) => { req.uploadSubDir = 'enrollment'; next(); });
 
 // Face verification
-router.post('/verify',  upload.any(), faceVCtrl.verifyFace);
+router.post('/verify',           upload.any(), faceVCtrl.verifyFace);
+
 
 // Enrollment
 router.post('/enrollment/start',                    ctrl.startEnrollment);
