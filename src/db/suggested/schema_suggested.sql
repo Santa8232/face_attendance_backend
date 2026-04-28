@@ -57,6 +57,21 @@ BEGIN
 EXCEPTION
     WHEN duplicate_object THEN null;
 END $$;
+
+DO $$ 
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'image_angle_enum') THEN
+        CREATE TYPE image_angle_enum AS ENUM (
+            'Front', 
+            'Left', 
+            'Right', 
+            'Up', 
+            'Down'
+        );
+    END IF;
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
 ---------------------------------------------------------
 -- 1. Institutions
 ---------------------------------------------------------
@@ -350,7 +365,11 @@ CREATE TABLE IF NOT EXISTS face_embedding (
 CREATE TABLE IF NOT EXISTS face_enrollment_images (
     id SERIAL PRIMARY KEY,
     face_enrollment_id INT REFERENCES face_enrollment(id) ON DELETE CASCADE,
-    image_path VARCHAR(500) NOT NULL
+    image_path VARCHAR(500) NOT NULL,
+    image_angle image_angle_enum,
+    image_quality_score DECIMAL(5, 2),
+    is_approved BOOLEAN,
+    captured_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
 ---------------------------------------------------------
@@ -424,7 +443,11 @@ CREATE TABLE IF NOT EXISTS user_devices (
 CREATE TABLE IF NOT EXISTS login_logs (
     id SERIAL PRIMARY KEY,
     user_id INT REFERENCES users(id) ON DELETE CASCADE,
-    login_time TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    login_time TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    logout_time TIMESTAMP WITH TIME ZONE,
+    ip_address VARCHAR(50),
+    device_id VARCHAR(200),
+    login_status VARCHAR(50)
 );
 ---------------------------------------------------------
 -- 25. AI Session Processing
@@ -432,7 +455,13 @@ CREATE TABLE IF NOT EXISTS login_logs (
 CREATE TABLE IF NOT EXISTS ai_session_processing (
     id SERIAL PRIMARY KEY,
     attendance_session_id INT REFERENCES attendance_sessions(id),
-    processing_status VARCHAR(50)
+    total_faces_detected INT,
+    total_faces_recognized INT,
+    total_unrecognized_faces INT,
+    processing_status VARCHAR(50),
+    processing_started_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    processing_completed_at TIMESTAMP WITH TIME ZONE,
+    error_message VARCHAR(1000) NULL
 );
 
 ---------------------------------------------------------
@@ -440,9 +469,11 @@ CREATE TABLE IF NOT EXISTS ai_session_processing (
 ---------------------------------------------------------
 CREATE TABLE IF NOT EXISTS system_settings (
     id SERIAL PRIMARY KEY,
-    institution_id INT REFERENCES institutions(id),
     setting_key VARCHAR(100) UNIQUE NOT NULL,
-    setting_value TEXT
+    setting_value TEXT NULL,
+    description VARCHAR(300),
+    updated_by_user_id INT,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
 ---------------------------------------------------------
@@ -450,8 +481,15 @@ CREATE TABLE IF NOT EXISTS system_settings (
 ---------------------------------------------------------
 CREATE TABLE IF NOT EXISTS file_uploads (
     id SERIAL PRIMARY KEY,
-    uploaded_by INT REFERENCES users(id),
-    file_path TEXT NOT NULL
+    uploaded_by_user_id INT REFERENCES users(id) ON DELETE CASCADE,
+    institution_id INT NULL,
+    file_type VARCHAR(100),
+    file_name VARCHAR(300),
+    file_path TEXT NOT NULL,
+    mime_type VARCHAR(100),
+    file_size_kb DECIMAL(12,2),
+    uploaded_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    is_active BOOLEAN
 );
 
 ---------------------------------------------------------
@@ -460,7 +498,14 @@ CREATE TABLE IF NOT EXISTS file_uploads (
 CREATE TABLE IF NOT EXISTS face_recognition_logs (
     id SERIAL PRIMARY KEY,
     attendance_session_id INT REFERENCES attendance_sessions(id),
-    detected_faces_count INT
+    student_id INT REFERENCES students(id),
+    teacher_id INT REFERENCES teachers(id),
+    detected_face_image_path VARCHAR(500) NULL,
+    recognition_status VARCHAR(50),
+    confidence_score DECIMAL(5,2),
+    matched_face_enrollment_id INT REFERENCES face_enrollment(id),
+    processed_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    remarks VARCHAR(300) NULL
 );
 
 ---------------------------------------------------------
@@ -470,6 +515,12 @@ CREATE TABLE IF NOT EXISTS audit_logs (
     id SERIAL PRIMARY KEY,
     user_id INT REFERENCES users(id) ON DELETE SET NULL,
     action_type VARCHAR(100),
+    table_name VARCHAR(100),
+    record_id VARCHAR(100),
+    old_value TEXT NULL,
+    new_value TEXT NULL,
+    ip_address VARCHAR(50) NULL,
+    device_id VARCHAR(200) NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 ---------------------------------------------------------
@@ -478,6 +529,10 @@ CREATE TABLE IF NOT EXISTS audit_logs (
 CREATE TABLE IF NOT EXISTS notifications (
     id SERIAL PRIMARY KEY,
     user_id INT REFERENCES users(id) ON DELETE CASCADE,
-    message TEXT,
-    is_read BOOLEAN DEFAULT FALSE
+    title VARCHAR(200),
+    message VARCHAR(1000),
+    notification_type VARCHAR(100),
+    is_read BOOLEAN,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    read_at TIMESTAMP WITH TIME ZONE
 );
