@@ -1,10 +1,27 @@
 # Database Initialization Guide 🐘
 
-This guide covers the steps required to initialize the PostgreSQL database and migrate existing JSON data into the new persistent storage layer using **auto-incrementing integer (SERIAL) primary keys**.
+This guide covers the steps required to initialize the PostgreSQL database and migrate existing JSON data into the new persistent storage layer.
 
 ---
 
-## 1. Environment Configuration
+## 1. Prerequisites (Vector Database Support)
+
+The system now uses **`pgvector`** for efficient face embedding similarity searches. You must install the extension manually on Windows before initializing the database.
+
+### **Manual Installation Steps for Windows**
+1. **Locate PostgreSQL 17 installation**: Typically `C:\Program Files\PostgreSQL\17`.
+2. **Copy vector.dll**:
+   - Source: `pgvector-extracted\lib\vector.dll` (found in your project root after extraction)
+   - Destination: `C:\Program Files\PostgreSQL\17\lib\`
+3. **Copy Extension Files**:
+   - Source: `pgvector-extracted\share\extension\*`
+   - Destination: `C:\Program Files\PostgreSQL\17\share\extension\`
+4. **Restart PostgreSQL Service**:
+   - Open `services.msc`, find `postgresql-x64-17`, and click **Restart**.
+
+---
+
+## 2. Environment Configuration
 
 Ensure your `.env` file contains the correct PostgreSQL credentials:
 
@@ -13,14 +30,14 @@ DB_HOST=localhost
 DB_PORT=5432
 DB_USER=postgres
 DB_PASSWORD=your_password
-DB_NAME=facial
+DB_NAME=attendance_db
 ```
 
 ---
 
-## 2. Schema Initialization
+## 3. Schema Initialization
 
-To create the necessary tables and indices, run the initialization script. If you are updating an existing database and need to start fresh, use the `--reset` flag.
+To create the necessary tables and indices, run the initialization script. Use the `--reset` flag to start with a fresh schema.
 
 ### **Fresh Setup / Reset**
 
@@ -28,49 +45,43 @@ To create the necessary tables and indices, run the initialization script. If yo
 > The `--reset` flag will drop all existing tables and data.
 
 ```bash
-node src/db/initDb.js --reset
-```
-
-### **Standard Initialization**
-
-```bash
-node src/db/initDb.js
+node src/db/suggested/initDb_suggested.js --reset
 ```
 
 ---
 
-## 3. Data Migration (JSON to PostgreSQL)
+## 4. Data Migration (JSON to PostgreSQL)
 
-If you have existing data in the `data/*.json` files, you can migrate them into the database using the migration script. This script automatically handles dependency ordering and validates foreign keys.
+To migrate data from `data/*.json` files into the database:
 
 ```bash
-node src/db/migrateData.js
+node src/db/suggested/migrateData_suggested.js
 ```
+
+This script handles:
+- **Institutions & Roles**
+- **Departments & Courses**
+- **Users** (with automatic mapping)
+- **Students & Teachers**
+- **Face Enrollments**
 
 ---
 
-## 4. Verification
+## 5. Verification
 
-After migration, start the server to verify connectivity:
+Start the server to verify connectivity:
 
 ```bash
 npm run dev
 ```
 
-You should see the following in your logs:
+You should see:
 `🐘 PostgreSQL connected successfully`
-
----
-
-## Technical Notes
-
-- **Biometric Data**: The schema includes a `face_embedding` column in `enrollment_samples` (JSONB) and `aggregate_embedding` in `face_templates`. These are essential for the face matching engine.
-- **Aggregation**: The enrollment completion process now calculates a mathematical average of multiple face samples to increase verification accuracy.
 
 ---
 
 ## Troubleshooting
 
-- **Authentication Failed**: Double-check your `DB_PASSWORD` in `.env`.
-- **Database Does Not Exist**: Ensure you have created the database (e.g., `CREATE DATABASE facial;`) in PostgreSQL.
-- **Foreign Key Violations**: The migration script will skip records with missing dependencies and log a warning. Check your JSON files for orphan records if important data is missing.
+- **Extension "vector" is not available**: Ensure you have copied the `pgvector` files to the correct PostgreSQL directories and restarted the service.
+- **Duplicate Key Violations**: If you encounter duplicate key errors during migration, run the initialization with `--reset` first.
+- **Null Value Constraints**: Ensure your JSON files have all required fields (like `institution_id` for users).

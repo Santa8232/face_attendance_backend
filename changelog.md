@@ -1,26 +1,30 @@
 # Changelog
 
-All notable changes to this project will be documented in this file.
+## [2026-04-28] - Database Migration & Vector Search Setup
 
-## [1.1.0] - 2026-04-19
+### Added
+- Created `data/teachers.json` for initial teacher data.
+- Added sample users to `data/users.json` for Dr. Sarah Smith, Jane Doe, and Alex Johnson.
+- Enabled `pgvector` support in `schema_suggested.sql` (requires manual extension installation).
+- Standardized database primary keys to `id` across all tables.
 
 ### Fixed
-- **Face Enrollment Pipeline**: Resolved 500 errors during enrollment completion by aligning column names with PostgreSQL schema (`template_data` -> `aggregate_embedding`, `status` -> `approval_status`).
-- **Database Schema**: Fixed primary key types and column names across biometric tables.
-- **Identifier Consistency**: Added support for both Integer (SERIAL) and UUID identifiers in employee lookups to prevent database type mismatches.
-- **Face Template Logic**: Resolved "missing biometric data" during verification by adding proper embedding storage and aggregation. Successfully verified real-time similarity matching (e.g., 0.7031).
+- Resolved multiple syntax errors in `schema_suggested.sql` (missing commas, invalid data types, truncated table definitions).
+- Fixed `BIT` vs `BOOLEAN` compatibility issues in PostgreSQL.
+- Updated `migrateData_suggested.js` to correctly handle `email` and `mobile_no` fields during migration.
+- Corrected import paths in database utility scripts (`cleanDB.js`).
 
-### Changed
-- **Biometric Storage**: Updated `face_templates` to store JSONB aggregate embeddings.
-- **Diagnostic Mode**: Temporarily enabled `upload.any()` and detailed logging for multipart requests to debug Flutter client integration.
+### Manual Installation Steps Required for `pgvector`
+To enable vector database features (face embedding similarity search), follow these steps:
 
-### Added
-- **Embedding Support**: Added `face_embedding` column to `enrollment_samples` for better template accuracy.
-- **Diagnostic Logging**: Comprehensive request body and file logging in `enrollment` and `verification` controllers.
-
-## [1.0.0] - 2026-04-18
-
-### Added
-- Initial release with Face Attendance features.
-- Geofencing and Shift management.
-- Offline sync support.
+1. **Locate PostgreSQL 17 installation**: Typically `C:\Program Files\PostgreSQL\17`.
+2. **Copy vector.dll**:
+   - Source: `src/db/suggested/pgvector-extracted/lib/vector.dll`
+   - Destination: `C:\Program Files\PostgreSQL\17\lib\`
+3. **Copy Extension Files**:
+   - Source: `src/db/suggested/pgvector-extracted/share/extension/*`
+   - Destination: `C:\Program Files\PostgreSQL\17\share\extension\`
+4. **Restart PostgreSQL Service**:
+   - Open `services.msc`, find `postgresql-x64-17`, and click **Restart**.
+5. **Run Initialization**:
+   - Run `node src/db/suggested/initDb_suggested.js --reset` to enable the extension in the database.

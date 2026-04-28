@@ -48,12 +48,11 @@ const definition = {
         properties: {
           username: {
             type: "string",
-            example: "EMP001",
-            description: "email or employee_code",
+            example: "2026/CSE/001",
+            description: "username, employee_code, or registration_no",
           },
-          password: { type: "string", example: "Emp@1234" },
-          device_id: { type: "string", example: "a1b2c3d4e5" },
-          device_name: { type: "string", example: "Pixel 8" },
+          password: { type: "string", example: "Secure@1234" },
+          device_id: { type: "string", example: "a1b2c3d4e5", description: "FCM token for push notifications" },
         },
       },
       LoginResponse: {
@@ -72,14 +71,24 @@ const definition = {
                 type: "string",
                 description: "Refresh token (7 d expiry)",
               },
-              employee: {
+              user: {
                 type: "object",
                 properties: {
                   id: { type: "integer", example: 1 },
-                  employee_code: { type: "string" },
+                  institution_id: { type: "integer", nullable: true },
+                  username: { type: "string" },
+                  role: { type: "string" },
+                  profile_id: { type: "integer", nullable: true }
+                }
+              },
+              profile: {
+                type: "object",
+                properties: {
+                  id: { type: "integer", example: 1 },
+                  identifier: { type: "string", description: "employee_code or registration_no" },
                   name: { type: "string" },
-                  role: { type: "string", enum: ["admin", "hr", "employee"] },
-                  office_id: { type: "integer" },
+                  role: { type: "string" },
+                  face_enrolled: { type: "boolean" },
                 },
               },
             },
@@ -254,6 +263,32 @@ const definition = {
           401: { description: "Invalid credentials" },
         },
       },
+    },
+    "/api/v1/auth/register": {
+      post: {
+        tags: ["Auth"],
+        summary: "Register a new user (ADMIN only)",
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["username", "password", "full_name"],
+                properties: {
+                  username: { type: "string" },
+                  password: { type: "string" },
+                  full_name: { type: "string" },
+                  role_name: { type: "string", example: "Student" },
+                  institution_id: { type: "integer" }
+                }
+              }
+            }
+          }
+        },
+        responses: { 201: { description: "User registered" }, 409: { description: "Username already in use" } }
+      }
     },
     "/api/v1/auth/refresh": {
       post: {
