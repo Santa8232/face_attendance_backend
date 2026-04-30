@@ -86,6 +86,7 @@ const login = asyncHandler(async (req, res) => {
     institution_id: user.institution_id,
     username: user.username,
     role: roleName,
+    face_enrolled: faceEnrolled || false,
     profile_id: profile?.id || null,
   };
 
@@ -145,15 +146,8 @@ const login = asyncHandler(async (req, res) => {
       access_token,
       refresh_token,
       user: payload,
-      profile: profile
-        ? {
-            id: profile.id,
-            identifier: profile.employee_code || profile.registration_no || null,
-            name: profile.teacher_name || profile.student_name || profile.principal_name || null,
-            role: roleName,
-            face_enrolled: faceEnrolled,
-          }
-        : null,
+      profile: profile,   
+     
     },
     "Login successful",
   );

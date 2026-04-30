@@ -122,12 +122,15 @@ const migrate = async () => {
     const students = loadJson('students.json');
     console.log(`  - Migrating ${students.length} students...`);
     for (const std of students) {
-      const { id, user_id, institution_id, class_id, ...data } = std;
+      const { id, user_id, institution_id, class_id, department_id, course_id, semester_id, ...data } = std;
       const res = await store.insert(TABLES.STUDENTS, {
         ...data,
         user_id: mapping.users[user_id],
         institution_id: mapping.institutions[institution_id],
-        class_id: mapping.classes[class_id]
+        class_id: mapping.classes[class_id],
+        department_id: mapping.departments[department_id],
+        course_id: mapping.courses[course_id],
+        semester_id: mapping.semesters[semester_id]
       });
       mapping.students[id] = res.id;
     }
@@ -136,16 +139,30 @@ const migrate = async () => {
     const teachers = loadJson('teachers.json');
     console.log(`  - Migrating ${teachers.length} teachers...`);
     for (const t of teachers) {
-      const { id, user_id, institution_id, ...data } = t;
+      const { id, user_id, institution_id, department_id, ...data } = t;
       const res = await store.insert(TABLES.TEACHERS, {
         ...data,
         user_id: mapping.users[user_id],
-        institution_id: mapping.institutions[institution_id]
+        institution_id: mapping.institutions[institution_id],
+        department_id: mapping.departments[department_id]
       });
       mapping.teachers[id] = res.id;
     }
 
-    // 10. Face Enrollment
+    // 10. Principals
+    const principals = loadJson('principals.json');
+    console.log(`  - Migrating ${principals.length} principals...`);
+    for (const p of principals) {
+      const { id, user_id, institution_id, ...data } = p;
+      const res = await store.insert(TABLES.PRINCIPALS, {
+        ...data,
+        user_id: mapping.users[user_id],
+        institution_id: mapping.institutions[institution_id]
+      });
+      mapping.principals[id] = res.id;
+    }
+
+    // 11. Face Enrollment
     const enrollments = loadJson('face_enrollment.json');
     console.log(`  - Migrating ${enrollments.length} face enrollments...`);
     for (const fe of enrollments) {
