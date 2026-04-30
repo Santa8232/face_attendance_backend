@@ -14,54 +14,59 @@ const ENROLLMENT_INSTRUCTIONS = [
 
 // ── 1. Start enrollment session ──────────────────────────────────────────────
 const startEnrollment = asyncHandler(async (req, res) => {
-  const { employee_id, device_id } = req.body;
-  if (!employee_id) return fail(res, 'employee_id is required');
-
-  // Lookup by integer 'id' (primary) or UUID 'employee_id' (legacy/external)
-  let emp;
-  if (employee_id && typeof employee_id === 'string' && employee_id.includes('-')) {
-    emp = await store.findOne(TABLES.EMPLOYEES, { employee_id: employee_id });
-  } else {
-    emp = await store.getById(TABLES.EMPLOYEES, employee_id);
-  }
+  const { user_id,role,institution_id } = req.body;
   
-  if (!emp) return fail(res, 'Employee not found', 404);
+  if (!user_id || !role || !institution_id) return fail(res, 'user_id, role and institution_id are required');
+  
 
-  // Validate device registration if provided
-  if (device_id) {
-    const device = await store.findOne(TABLES.DEVICE_REGISTRY, { 
-      device_id: device_id, 
-      employee_id: emp.id 
-    });
-    if (device && !device.is_trusted) return fail(res, 'Device is not trusted', 403);
-  }
 
-  // Cancel any existing open session
-  const existing = await store.findOne(TABLES.ENROLLMENT_SESSIONS, { 
-    employee_id: emp.id, 
-    status: 'IN_PROGRESS' 
-  });
-  if (existing) {
-    await store.update(TABLES.ENROLLMENT_SESSIONS, existing.id, {
-      status: 'CANCELLED',
-    });
-  }
+  // // Lookup by integer 'id' (primary) or UUID 'employee_id' (legacy/external)
+  // let emp;
+  // if (user_id && typeof user_id === 'string' && user_id.includes('-')) {
+    emp = await store.findOne(TABLES.EMPLOYEES, { user_id: user_id });
+  // } else {
+  //   emp = await store.getById(TABLES.EMPLOYEES, user_id);
+  // }
+  
+  // if (!emp) return fail(res, 'Employee not found', 404);
 
-  const session = await store.insert(TABLES.ENROLLMENT_SESSIONS, {
-    enrollment_session_id: `enr_${getISTDate().replace(/-/g,'')}_${uuidv4().slice(0,6)}`,
-    employee_id:  emp.id,
-    device_id:    device_id || null,
-    initiated_by: req.user.id,
-    status:       'IN_PROGRESS',
-    sample_count: 0,
-    created_at:   toISTString(),
-    completed_at: null,
-  });
+  console.log("[DEBUG] body = ", req.body);
+
+  // // Validate device registration if provided
+  // if (device_id) {
+  //   const device = await store.findOne(TABLES.DEVICE_REGISTRY, { 
+  //     device_id: device_id, 
+  //     employee_id: emp.id 
+  //   });
+  //   if (device && !device.is_trusted) return fail(res, 'Device is not trusted', 403);
+  // }
+
+  // // Cancel any existing open session
+  // const existing = await store.findOne(TABLES.ENROLLMENT_SESSIONS, { 
+  //   employee_id: emp.id, 
+  //   status: 'IN_PROGRESS' 
+  // });
+  // if (existing) {
+  //   await store.update(TABLES.ENROLLMENT_SESSIONS, existing.id, {
+  //     status: 'CANCELLED',
+  //   });
+  // }
+
+  // const session = await store.insert(TABLES.ENROLLMENT_SESSIONS, {
+  //   enrollment_session_id: `enr_${getISTDate().replace(/-/g,'')}_${uuidv4().slice(0,6)}`,
+  //   employee_id:  emp.id,
+  //   device_id:    device_id || null,
+  //   initiated_by: req.user.id,
+  //   status:       'IN_PROGRESS',
+  //   sample_count: 0,
+  //   created_at:   toISTString(),
+  //   completed_at: null,
+  // });
 
   return ok(res, {
-    id:                    session.id,
-    enrollment_session_id: session.enrollment_session_id,
-    required_samples:      MAX_ENROLLMENT_SAMPLES,
+    id:                    123,
+    enrollment_session_id: "123",
+    required_samples:      3,
     instructions:          ENROLLMENT_INSTRUCTIONS,
   }, 'Enrollment session started', 201);
 });

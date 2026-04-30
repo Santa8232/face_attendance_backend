@@ -146,7 +146,9 @@ const login = asyncHandler(async (req, res) => {
       access_token,
       refresh_token,
       user: payload,
-      profile: profile,   
+      profile: profile,
+        // institute
+        institution: user.institution_id ? await store.getById(TABLES.INSTITUTIONS, user.institution_id) : null,
      
     },
     "Login successful",
