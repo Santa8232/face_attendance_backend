@@ -1,0 +1,12 @@
+[
+    {
+        "id": "std-001",
+        "user_id": "user-student-alex",
+        "institution_id": "inst-001",
+        "department_id": "dept-001",
+        "course_id": "course-001",
+        "class_id": "class-001",
+        "registration_no": "2026/CSE/001",
+        "student_name": "Alex Johnson"
+    }
+]

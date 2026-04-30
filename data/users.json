@@ -1,0 +1,57 @@
+[
+    {
+        "id": "user-admin-santa",
+        "institution_id": "inst-001",
+        "username": "santa",
+        "email": "santa@example.com",
+        "password_hash": "$2a$10$GMDeFCwfVMYw5f8f55JiH.BadiRy0ZfK6G85Cqef/b9rpjimIpy4a",
+        "full_name": "Santa Mayengbam",
+        "mobile_no": "9876543210",
+        "user_role_id": 6,
+        "is_active": true
+    },
+    {
+        "id": "user-principal-roberts",
+        "institution_id": "inst-001",
+        "username": "dr_roberts",
+        "email": "richard.roberts@example.com",
+        "password_hash": "$2a$10$GMDeFCwfVMYw5f8f55JiH.BadiRy0ZfK6G85Cqef/b9rpjimIpy4a",
+        "full_name": "Dr. Richard Roberts",
+        "mobile_no": "9876543211",
+        "user_role_id": 2,
+        "is_active": true
+    },
+    {
+        "id": "user-teacher-smith",
+        "institution_id": "inst-001",
+        "username": "prof_smith",
+        "email": "sarah.smith@example.com",
+        "password_hash": "$2a$10$GMDeFCwfVMYw5f8f55JiH.BadiRy0ZfK6G85Cqef/b9rpjimIpy4a",
+        "full_name": "Dr. Sarah Smith",
+        "mobile_no": "9876543212",
+        "user_role_id": 5,
+        "is_active": true
+    },
+    {
+        "id": "user-teacher-jane",
+        "institution_id": "inst-001",
+        "username": "teacher_jane",
+        "email": "jane.doe@example.com",
+        "password_hash": "$2a$10$GMDeFCwfVMYw5f8f55JiH.BadiRy0ZfK6G85Cqef/b9rpjimIpy4a",
+        "full_name": "Jane Doe",
+        "mobile_no": "9876543213",
+        "user_role_id": 5,
+        "is_active": true
+    },
+    {
+        "id": "user-student-alex",
+        "institution_id": "inst-001",
+        "username": "alex_johnson",
+        "email": "alex.johnson@example.com",
+        "password_hash": "$2a$10$GMDeFCwfVMYw5f8f55JiH.BadiRy0ZfK6G85Cqef/b9rpjimIpy4a",
+        "full_name": "Alex Johnson",
+        "mobile_no": "9876543214",
+        "user_role_id": 4,
+        "is_active": true
+    }
+]

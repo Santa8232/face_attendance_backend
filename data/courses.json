@@ -1,0 +1,24 @@
+[
+    {
+        "id": "course-btech-cs",
+        "institution_id": "inst-001",
+        "department_id": "dept-cs",
+        "course_name": "Bachelor of Technology in CS",
+        "course_code": "BTECH-CSE"
+    },
+    {
+    "id": "course-mca",
+    "institution_id": "inst-002",
+    "department_id": "dept-cs",
+    "course_name": "Master of Computer Applications",
+    "course_code": "MCA"
+    },
+    {
+    "id": "course-bcom",
+    "institution_id": "inst-003",
+    "department_id": "dept-commerce",
+    "course_name": "Bachelor of Commerce",
+    "course_code": "BCOM"
+    }
+   
+]

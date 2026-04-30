@@ -1,0 +1,92 @@
+[
+  {
+    "id": "sub-001",
+    "course_id": "course-btech-cs",
+    "subject_name": "Data Structures",
+    "subject_code": "CS201",
+    "subject_type": "Core",
+    "credit": "4",
+    "is_active": true
+  },
+  {
+    "id": "sub-002",
+    "course_id": "course-btech-cs",
+    "subject_name": "Operating Systems",
+    "subject_code": "CS301",
+    "subject_type": "Core",
+    "credit": "4",
+    "is_active": true
+  },
+  {
+    "id": "sub-003",
+    "course_id": "course-btech-cs",
+    "subject_name": "Database Management Systems",
+    "subject_code": "CS302",
+    "subject_type": "Core",
+    "credit": "4",
+    "is_active": true
+  },
+  {
+    "id": "sub-004",
+    "course_id": "course-btech-it",
+    "subject_name": "Computer Networks",
+    "subject_code": "IT301",
+    "subject_type": "Core",
+    "credit": "4",
+    "is_active": true
+  },
+  {
+    "id": "sub-005",
+    "course_id": "course-btech-it",
+    "subject_name": "Software Engineering",
+    "subject_code": "IT302",
+    "subject_type": "Core",
+    "credit": "3",
+    "is_active": true
+  },
+  {
+    "id": "sub-006",
+    "course_id": "course-bsc-cs",
+    "subject_name": "Discrete Mathematics",
+    "subject_code": "CS101",
+    "subject_type": "Core",
+    "credit": "3",
+    "is_active": true
+  },
+  {
+    "id": "sub-007",
+    "course_id": "course-mca",
+    "subject_name": "Machine Learning",
+    "subject_code": "MCA401",
+    "subject_type": "Elective",
+    "credit": "4",
+    "is_active": true
+  },
+  {
+    "id": "sub-008",
+    "course_id": "course-mca",
+    "subject_name": "Cloud Computing",
+    "subject_code": "MCA402",
+    "subject_type": "Elective",
+    "credit": "3",
+    "is_active": true
+  },
+  {
+    "id": "sub-009",
+    "course_id": "course-mba",
+    "subject_name": "Marketing Management",
+    "subject_code": "MBA101",
+    "subject_type": "Core",
+    "credit": "3",
+    "is_active": true
+  },
+  {
+    "id": "sub-010",
+    "course_id": "course-mba",
+    "subject_name": "Financial Accounting",
+    "subject_code": "MBA102",
+    "subject_type": "Core",
+    "credit": "3",
+    "is_active": true
+  }
+]

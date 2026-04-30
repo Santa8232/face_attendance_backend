@@ -1,0 +1,22 @@
+[
+    {
+        "id": "t-01",
+        "user_id": "user-teacher-smith",
+        "institution_id": "inst-001",
+        "department_id": "dept-001",
+        "employee_code": "T-001",
+        "email": "sarah@gmail.com",
+        "mobile_no": "9874563210",
+        "teacher_name": "Dr. Sarah Smith"
+    },
+    {
+        "id": "t-02",
+        "user_id": "user-teacher-jane",
+        "institution_id": "inst-001",
+        "department_id": "dept-001",
+        "employee_code": "T-002",
+        "email": "janes@gmail.com",
+        "mobile_no": "9874563210",
+        "teacher_name": "Jane Doe"
+    }
+]

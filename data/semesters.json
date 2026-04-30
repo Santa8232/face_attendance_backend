@@ -1,0 +1,82 @@
+[
+  {
+    "id": "sem-01",
+    "course_id": "course-btech-cs",
+    "semester_name": "Semester 1",
+    "semester_number": 1,
+    "academic_year": "2026",
+    "is_active": true
+  },
+  {
+    "id": "sem-02",
+    "course_id": "course-btech-cs",
+    "semester_name": "Semester 2",
+    "semester_number": 2,
+    "academic_year": "2026",
+    "is_active": true
+  },
+  {
+    "id": "sem-03",
+    "course_id": "course-btech-it",
+    "semester_name": "Semester 3",
+    "semester_number": 3,
+    "academic_year": "2026",
+    "is_active": true
+  },
+  {
+    "id": "sem-04",
+    "course_id": "course-btech-it",
+    "semester_name": "Semester 4",
+    "semester_number": 4,
+    "academic_year": "2026",
+    "is_active": true
+  },
+  {
+    "id": "sem-05",
+    "course_id": "course-bsc-cs",
+    "semester_name": "Semester 5",
+    "semester_number": 5,
+    "academic_year": "2025",
+    "is_active": false
+  },
+  {
+    "id": "sem-06",
+    "course_id": "course-bsc-cs",
+    "semester_name": "Semester 6",
+    "semester_number": 6,
+    "academic_year": "2025",
+    "is_active": false
+  },
+  {
+    "id": "sem-07",
+    "course_id": "course-mca",
+    "semester_name": "Semester 1",
+    "semester_number": 1,
+    "academic_year": "2026",
+    "is_active": true
+  },
+  {
+    "id": "sem-08",
+    "course_id": "course-mca",
+    "semester_name": "Semester 2",
+    "semester_number": 2,
+    "academic_year": "2026",
+    "is_active": true
+  },
+  {
+    "id": "sem-09",
+    "course_id": "course-mba",
+    "semester_name": "Semester 1",
+    "semester_number": 1,
+    "academic_year": "2026",
+    "is_active": true
+  },
+  {
+    "id": "sem-10",
+    "course_id": "course-mba",
+    "semester_name": "Semester 2",
+    "semester_number": 2,
+    "academic_year": "2026",
+    "is_active": true
+  }
+]

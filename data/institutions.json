@@ -1,0 +1,24 @@
+[
+    {
+        "id": "inst-001",
+        "institution_code": "GOVT-ENG-01",
+        "institution_name": "Government Engineering College",
+        "institution_type": "Public University",
+        "is_active": true
+    },
+    
+    {
+        "id": "inst-002",
+        "institution_code": "556678",
+        "institution_name": "COMET SCHOOL, Changangei",
+        "institution_type": "Private School",
+        "is_active": true
+    },
+    {
+        "id": "inst-005",
+        "institution_code": "MES001",
+        "institution_name": "MILLENIUM INSTITUTE OF SCIENCE",
+        "institution_type": "Private higher secondary School",
+        "is_active": true
+    }
+]

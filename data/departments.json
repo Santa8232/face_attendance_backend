@@ -1,0 +1,23 @@
+[
+    {
+        "id": "dept-cs",
+        "institution_id": "inst-001",
+        "department_name": "Computer Science & Engineering",
+        "department_code": "CSE",
+        "is_active": true
+    },
+    {
+        "id": "dept-bs",
+        "institution_id": "inst-002",
+        "department_name": "Business & Association",
+        "department_code": "BAA",
+        "is_active": true
+    },
+    {
+        "id": "dept-at",
+        "institution_id": "inst-003",
+        "department_name": "Arts & Humanities",
+        "department_code": "AH",
+        "is_active": true
+    }
+]

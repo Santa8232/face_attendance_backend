@@ -1,0 +1,92 @@
+[
+  {
+    "id": "class-001",
+    "institution_id": "inst-001",
+    "course_id": "course-btech-cs",
+    "semester_id": "sem-01",
+    "section_name": "A",
+    "academic_year": "2026",
+    "is_active": true
+  },
+  {
+    "id": "class-002",
+    "institution_id": "inst-001",
+    "course_id": "course-btech-cs",
+    "semester_id": "sem-01",
+    "section_name": "B",
+    "academic_year": "2026",
+    "is_active": true
+  },
+  {
+    "id": "class-003",
+    "institution_id": "inst-001",
+    "course_id": "course-btech-it",
+    "semester_id": "sem-03",
+    "section_name": "A",
+    "academic_year": "2026",
+    "is_active": true
+  },
+  {
+    "id": "class-004",
+    "institution_id": "inst-001",
+    "course_id": "course-btech-it",
+    "semester_id": "sem-04",
+    "section_name": "B",
+    "academic_year": "2026",
+    "is_active": true
+  },
+  {
+    "id": "class-005",
+    "institution_id": "inst-002",
+    "course_id": "course-mca",
+    "semester_id": "sem-07",
+    "section_name": "A",
+    "academic_year": "2026",
+    "is_active": true
+  },
+  {
+    "id": "class-006",
+    "institution_id": "inst-002",
+    "course_id": "course-mca",
+    "semester_id": "sem-08",
+    "section_name": "B",
+    "academic_year": "2026",
+    "is_active": true
+  },
+  {
+    "id": "class-007",
+    "institution_id": "inst-002",
+    "course_id": "course-mba",
+    "semester_id": "sem-09",
+    "section_name": "A",
+    "academic_year": "2026",
+    "is_active": true
+  },
+  {
+    "id": "class-008",
+    "institution_id": "inst-002",
+    "course_id": "course-mba",
+    "semester_id": "sem-10",
+    "section_name": "B",
+    "academic_year": "2026",
+    "is_active": true
+  },
+  {
+    "id": "class-009",
+    "institution_id": "inst-003",
+    "course_id": "course-bsc-cs",
+    "semester_id": "sem-05",
+    "section_name": "A",
+    "academic_year": "2025",
+    "is_active": false
+  },
+  {
+    "id": "class-010",
+    "institution_id": "inst-003",
+    "course_id": "course-bsc-cs",
+    "semester_id": "sem-06",
+    "section_name": "B",
+    "academic_year": "2025",
+    "is_active": false
+  }
+]
