@@ -1,5 +1,7 @@
 const swaggerJSDoc = require("swagger-jsdoc");
 
+const baseUrl = process.env.API_URL;
+
 const definition = {
   openapi: "3.0.0",
   info: {
@@ -11,7 +13,9 @@ const definition = {
       "Most endpoints require a Bearer JWT token obtained via `/api/v1/auth/login`.",
     contact: { name: "Backend Team" },
   },
-  servers: [{ url: "http://localhost:3000", description: "Local dev server" }],
+  servers: [
+    { url: baseUrl, description: "Active Server" },
+  ],
 
   components: {
     securitySchemes: {
@@ -450,7 +454,9 @@ const definition = {
               schema: {
                 type: "object",
                 properties: {
-                  employee_id: { type: "integer" },
+                  user_id: { type: "integer" },
+                  role: { type: "string" },
+                  institution_id: { type: "integer" },
                   device_id: { type: "string" },
                 },
               },
@@ -460,10 +466,10 @@ const definition = {
         responses: { 201: { description: "Session started" } },
       },
     },
-    "/api/v1/face/enrollment/sample": {
+    "/api/v1/face/enrollment/upload/embeded": {
       post: {
         tags: ["Face Enrollment"],
-        summary: "Upload enrollment sample (Base64 or Multipart)",
+        summary: "Upload enrollment embedded (Base64 or Multipart)",
         requestBody: {
           required: true,
           content: {
@@ -471,7 +477,7 @@ const definition = {
               schema: {
                 type: "object",
                 properties: {
-                  session_id: { type: "string" },
+                  face_enrollment_id: { type: "string" },
                   image: { type: "string", format: "binary" },
                   quality_score: { type: "number" },
                   liveness_score: { type: "number" },
@@ -482,7 +488,7 @@ const definition = {
               schema: {
                 type: "object",
                 properties: {
-                  session_id: { type: "string" },
+                  face_enrollment_id: { type: "string" },
                   image_base64: { type: "string" },
                   quality_score: { type: "number" },
                   liveness_score: { type: "number" },
@@ -491,7 +497,7 @@ const definition = {
             },
           },
         },
-        responses: { 200: { description: "Sample received" } },
+        responses: { 200: { description: "Image received" } },
       },
     },
     "/api/v1/face/enrollment/complete": {
@@ -504,7 +510,10 @@ const definition = {
             "application/json": {
               schema: {
                 type: "object",
-                properties: { session_id: { type: "string" } },
+                properties: { 
+                  face_enrollment_id: { type: "string" },
+                  aggregate_embedding: { type: "array", items: { type: "number" } }
+                },
               },
             },
           },
@@ -527,19 +536,34 @@ const definition = {
         responses: { 200: { description: "Approved" } },
       },
     },
-    "/api/v1/face/enrollment/{employee_id}/reset": {
+    "/api/v1/face/enrollment/{user_id}/reset": {
       post: {
         tags: ["Face Enrollment"],
         summary: "Reset enrollment (ADMIN)",
         parameters: [
           {
-            name: "employee_id",
+            name: "user_id",
             in: "path",
             required: true,
             schema: { type: "integer" },
           },
         ],
         responses: { 200: { description: "Reset" } },
+      },
+    },
+    "/api/v1/face/enrollment/{user_id}/status": {
+      get: {
+        tags: ["Face Enrollment"],
+        summary: "Check enrollment status",
+        parameters: [
+          {
+            name: "user_id",
+            in: "path",
+            required: true,
+            schema: { type: "integer" },
+          },
+        ],
+        responses: { 200: { description: "Status info" } },
       },
     },
     "/api/v1/face/verify": {

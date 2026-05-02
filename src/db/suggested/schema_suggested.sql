@@ -334,8 +334,6 @@ CREATE TABLE IF NOT EXISTS teacher_attendance (
 CREATE TABLE IF NOT EXISTS face_enrollment (
     id SERIAL PRIMARY KEY,
     user_id INT REFERENCES users(id) ON DELETE CASCADE,
-    student_id INT REFERENCES students(id) ON DELETE CASCADE,
-    teacher_id INT REFERENCES teachers(id) ON DELETE CASCADE,
     institution_id INT REFERENCES institutions(id) ON DELETE CASCADE,
     enrollment_status VARCHAR(50),
     enrollment_date DATE,
@@ -536,3 +534,4 @@ CREATE TABLE IF NOT EXISTS notifications (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     read_at TIMESTAMP WITH TIME ZONE
 );
+

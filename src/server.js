@@ -99,8 +99,9 @@ app.use((err, _req, res, _next) => {
 
 // ── Start ─────────────────────────────────────────────────────────────────────
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`\n🚀  Face Attendance API  →  http://localhost:${PORT}`);
-  console.log(`📖  Swagger UI           →  http://localhost:${PORT}/api-docs\n`);
+  const baseUrl = process.env.API_URL;
+  console.log(`🚀  Face Attendance API  →  ${baseUrl}`);
+  console.log(`📖  Swagger UI           →  ${baseUrl}/api-docs`);
   console.log('v1 API endpoints:');
   console.log('  POST  /api/v1/auth/login');
   console.log('  POST  /api/v1/auth/refresh');
@@ -112,7 +113,7 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log('  PATCH /api/v1/employees/:id/status');
   console.log('  ---');
   console.log('  POST  /api/v1/face/enrollment/start');
-  console.log('  POST  /api/v1/face/enrollment/sample');
+  console.log('  POST  /api/v1/face/enrollment/upload/embeded');
   console.log('  POST  /api/v1/face/enrollment/complete');
   console.log('  POST  /api/v1/face/enrollment/:template_id/approve');
   console.log('  POST  /api/v1/face/enrollment/:employee_id/reset');

@@ -4,9 +4,10 @@
         "institution_code": "GOVT-ENG-01",
         "institution_name": "Government Engineering College",
         "institution_type": "Public University",
+        "latitude": 24.84281119692308,
+        "longitude": 93.94121797116404,
         "is_active": true
     },
-    
     {
         "id": "inst-002",
         "institution_code": "556678",

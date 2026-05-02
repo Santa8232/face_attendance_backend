@@ -40,7 +40,7 @@ const migrate = async () => {
     const institutions = loadJson('institutions.json');
     console.log(`  - Migrating ${institutions.length} institutions...`);
     for (const inst of institutions) {
-      const { id, district, state, pin_code, latitude, longitude, ...data } = inst;
+      const { id, ...data } = inst;
       const res = await store.insert(TABLES.INSTITUTIONS, { ...data });
       mapping.institutions[id] = res.id;
     }
@@ -49,7 +49,7 @@ const migrate = async () => {
     const roles = loadJson('user_roles.json');
     console.log(`  - Migrating ${roles.length} roles...`);
     for (const role of roles) {
-      const { id, role_description, ...data } = role;
+      const { id, ...data } = role;
       const res = await store.insert(TABLES.USER_ROLES, { ...data });
       mapping.user_roles[id] = res.id;
     }
@@ -70,7 +70,7 @@ const migrate = async () => {
     const courses = loadJson('courses.json');
     console.log(`  - Migrating ${courses.length} courses...`);
     for (const course of courses) {
-      const { id, institution_id, department_id, course_type, duration_years, is_active, created_at, ...data } = course;
+      const { id, institution_id, department_id, ...data } = course;
       const res = await store.insert(TABLES.COURSES, {
         ...data,
         institution_id: mapping.institutions[institution_id],
@@ -96,7 +96,7 @@ const migrate = async () => {
     const semesters = loadJson('semesters.json');
     console.log(`  - Migrating ${semesters.length} semesters...`);
     for (const sem of semesters) {
-      const { id, course_id, academic_year, is_active, created_at, ...data } = sem;
+      const { id, course_id, ...data } = sem;
       const res = await store.insert(TABLES.SEMESTERS, {
         ...data,
         course_id: mapping.courses[course_id]
@@ -108,7 +108,7 @@ const migrate = async () => {
     const classes = loadJson('classes.json');
     console.log(`  - Migrating ${classes.length} classes...`);
     for (const cls of classes) {
-      const { id, institution_id, course_id, semester_id, is_active, created_at, ...data } = cls;
+      const { id, institution_id, course_id, semester_id, ...data } = cls;
       const res = await store.insert(TABLES.CLASSES, {
         ...data,
         institution_id: mapping.institutions[institution_id],
@@ -166,10 +166,12 @@ const migrate = async () => {
     const enrollments = loadJson('face_enrollment.json');
     console.log(`  - Migrating ${enrollments.length} face enrollments...`);
     for (const fe of enrollments) {
-      const { id, user_id, student_id, institution_id, enrollment_date, enrolled_by_user_id, remarks, ...data } = fe;
+      const { id, user_id, student_id, institution_id, enrolled_by_user_id, ...data } = fe;
       const res = await store.insert(TABLES.FACE_ENROLLMENT, {
         ...data,
-        user_id: mapping.users[user_id]
+        user_id: mapping.users[user_id],
+        institution_id: mapping.institutions[institution_id],
+        enrolled_by_user_id: mapping.users[enrolled_by_user_id]
       });
       mapping.face_enrollment[id] = res.id;
     }

@@ -8,10 +8,10 @@ router.use(authenticate);
 // Set upload sub-directory for enrollment images
 router.use((req, _res, next) => { req.uploadSubDir = 'enrollment'; next(); });
 
-router.get ('/:employeeId/status',  ctrl.enrollmentStatus);
-router.post('/start',               ctrl.startEnrollment);
-router.post('/:sessionId/sample',   upload.single('image'), ctrl.uploadSample);
-router.post('/:sessionId/complete', ctrl.completeEnrollment);
-router.delete('/:employeeId/reset', authorize('ADMIN'), ctrl.resetEnrollment);
+router.get ('/:id/status',      ctrl.enrollmentStatus);
+router.post('/start',             ctrl.startEnrollment);
+router.post('/upload/embeded',    upload.any(), ctrl.uploadEmbedded);
+router.post('/complete',          ctrl.completeEnrollment);
+router.post('/:id/reset',         authorize('ADMIN'), ctrl.resetEnrollment);
 
 module.exports = router;
