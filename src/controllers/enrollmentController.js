@@ -1,5 +1,5 @@
 const { v4: uuidv4 } = require('uuid');
-const store = require("../db/suggested/store_suggested");
+const store = require("../db/store");
 const { TABLES } = store;
 const { asyncHandler, ok, fail, getISTDate, toISTString } = require('../utils/helpers');
 const { MAX_ENROLLMENT_SAMPLES } = require('../config/constants');

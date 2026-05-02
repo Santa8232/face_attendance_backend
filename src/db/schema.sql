@@ -1,255 +1,537 @@
--- Face Attendance System Database Schema (PostgreSQL)
+---------------------------------------------------------
+-- 0. Extensions
+---------------------------------------------------------
+CREATE EXTENSION IF NOT EXISTS vector;
 
--- 1. Users & Authentication
-CREATE TABLE IF NOT EXISTS users (
-    id SERIAL PRIMARY KEY,
-    user_id UUID UNIQUE, -- Keep UUID for external references if needed, but 'id' is internal PK
-    email VARCHAR(255) UNIQUE NOT NULL,
-    username VARCHAR(100) UNIQUE,
-    password VARCHAR(255) NOT NULL,
-    role VARCHAR(50) DEFAULT 'EMPLOYEE', -- 'ADMIN', 'HR', 'EMPLOYEE'
-    is_active BOOLEAN DEFAULT TRUE,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-);
+---------------------------------------------------------
+-- 0. Custom Types & Enums
+---------------------------------------------------------
 
--- 2. Offices
-CREATE TABLE IF NOT EXISTS offices (
+DO $$ BEGIN
+    CREATE TYPE attendance_mode_enum AS ENUM ('Manual','GeoTagged','AI-Face','AI-Assisted', 'Face Recognition', 'Biometric', 'RFID', 'QR Code');
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
+
+DO $$ 
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'user_roles_enum') THEN
+        CREATE TYPE user_roles_enum AS ENUM (
+            'Directorate Admin', 
+            'Principal', 
+            'College Admin', 
+            'Teacher', 
+            'Student', 
+            'System Administrator'
+        );
+    END IF;
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
+
+DO $$ 
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'attendance_status_enum') THEN
+        CREATE TYPE attendance_status_enum AS ENUM (
+            'Present', 
+            'Absent', 
+            'Late', 
+            'Leave'
+        );
+    END IF;
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
+
+DO $$ 
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'leave_type_enum') THEN
+        CREATE TYPE leave_type_enum AS ENUM (
+            'Casual Leave', 
+            'Sick Leave', 
+            'Earned Leave', 
+            'Duty Leave', 
+            'Special Leave'
+        );
+    END IF;
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
+
+DO $$ 
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'image_angle_enum') THEN
+        CREATE TYPE image_angle_enum AS ENUM (
+            'Front', 
+            'Left', 
+            'Right', 
+            'Up', 
+            'Down'
+        );
+    END IF;
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
+---------------------------------------------------------
+-- 1. Institutions
+---------------------------------------------------------
+CREATE TABLE IF NOT EXISTS institutions (
     id SERIAL PRIMARY KEY,
-    office_id UUID UNIQUE,
-    office_name VARCHAR(255) NOT NULL,
+    institution_code VARCHAR(50) UNIQUE NOT NULL,
+    institution_name VARCHAR(255) NOT NULL,
+    institution_type VARCHAR(100),
+    district VARCHAR(100),
+    state VARCHAR(100),
+    latitude DECIMAL(10,7),
+    longitude DECIMAL(10,7),
+    pin_code VARCHAR(10),
     address TEXT,
-    city VARCHAR(100),
-    country VARCHAR(100),
-    timezone VARCHAR(50) DEFAULT 'UTC',
-    latitude DECIMAL(10, 8),
-    longitude DECIMAL(11, 8),
     is_active BOOLEAN DEFAULT TRUE,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+
 );
 
--- 3. Departments
+---------------------------------------------------------
+-- 2. Departments
+---------------------------------------------------------
 CREATE TABLE IF NOT EXISTS departments (
     id SERIAL PRIMARY KEY,
-    department_id UUID UNIQUE,
-    office_id INTEGER REFERENCES offices(id),
+    institution_id INT REFERENCES institutions(id) ON DELETE CASCADE,
     department_name VARCHAR(255) NOT NULL,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-);
-
--- 4. Shifts
-CREATE TABLE IF NOT EXISTS shifts (
-    id SERIAL PRIMARY KEY,
-    shift_id UUID UNIQUE,
-    office_id INTEGER REFERENCES offices(id),
-    shift_name VARCHAR(100) NOT NULL,
-    start_time TIME NOT NULL,
-    end_time TIME NOT NULL,
-    grace_minutes INTEGER DEFAULT 15,
+    department_code VARCHAR(50),
     is_active BOOLEAN DEFAULT TRUE,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- 5. Employees
-CREATE TABLE IF NOT EXISTS employees (
+---------------------------------------------------------
+-- 3. Courses
+---------------------------------------------------------
+CREATE TABLE IF NOT EXISTS courses (
     id SERIAL PRIMARY KEY,
-    employee_id UUID UNIQUE,
-    user_id INTEGER REFERENCES users(id),
-    office_id INTEGER REFERENCES offices(id),
-    department_id INTEGER REFERENCES departments(id),
-    shift_id INTEGER REFERENCES shifts(id),
-    employee_code VARCHAR(50) UNIQUE NOT NULL,
+    institution_id INT REFERENCES institutions(id) ON DELETE CASCADE,
+    department_id INT REFERENCES departments(id) ON DELETE CASCADE,
+    course_name VARCHAR(255) NOT NULL,
+    course_code VARCHAR(50),
+    course_type VARCHAR(50),
+    duration_years INT,
+    is_active BOOLEAN,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+---------------------------------------------------------
+-- 4. Semesters
+---------------------------------------------------------
+CREATE TABLE IF NOT EXISTS semesters (
+    id SERIAL PRIMARY KEY,
+    course_id INT REFERENCES courses(id) ON DELETE CASCADE,
+    semester_name VARCHAR(100) NOT NULL,
+    semester_number INT NOT NULL,
+    academic_year VARCHAR(20),
+    is_active BOOLEAN
+);
+
+---------------------------------------------------------
+-- 5. Subjects
+---------------------------------------------------------
+CREATE TABLE IF NOT EXISTS subjects (
+    id SERIAL PRIMARY KEY,
+    course_id INT REFERENCES courses(id) ON DELETE CASCADE,
+    semester_id INT REFERENCES semesters(id) ON DELETE CASCADE,
+    subject_code VARCHAR(50) NOT NULL,
+    subject_name VARCHAR(255) NOT NULL,
+    subject_type VARCHAR(50),
+    credit DECIMAL(4,2),
+    is_active BOOLEAN
+);
+
+---------------------------------------------------------
+-- 6. Classes
+---------------------------------------------------------
+CREATE TABLE IF NOT EXISTS classes (
+    id SERIAL PRIMARY KEY,
+    institution_id INT REFERENCES institutions(id) ON DELETE CASCADE,
+    course_id INT REFERENCES courses(id) ON DELETE CASCADE,
+    semester_id INT REFERENCES semesters(id) ON DELETE CASCADE,
+    section_name VARCHAR(50),
+    academic_year VARCHAR(20),
+    is_active BOOLEAN
+);
+
+
+---------------------------------------------------------
+-- 7. UserRoles
+---------------------------------------------------------
+
+CREATE TABLE IF NOT EXISTS user_roles (
+    id SERIAL PRIMARY KEY,
+    role_name user_roles_enum NOT NULL,
+    role_description VARCHAR(300)
+);
+
+---------------------------------------------------------
+-- 8. Users
+---------------------------------------------------------
+CREATE TABLE IF NOT EXISTS users (
+    id SERIAL PRIMARY KEY,
+    institution_id INT REFERENCES institutions(id) ON DELETE SET NULL,
+    username VARCHAR(100) UNIQUE NOT NULL,
+    password_hash VARCHAR(500) NOT NULL,
     full_name VARCHAR(255) NOT NULL,
-    email VARCHAR(255) UNIQUE NOT NULL,
-    phone VARCHAR(20),
+    mobile_no VARCHAR(20),
+    email VARCHAR(150) UNIQUE,
+    last_login_at TIMESTAMP WITH TIME ZONE,
+    user_role_id INT REFERENCES user_roles(id),
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+---------------------------------------------------------
+-- 9. Students
+---------------------------------------------------------
+CREATE TABLE IF NOT EXISTS students (
+    id SERIAL PRIMARY KEY,
+    user_id INT REFERENCES users(id) ON DELETE CASCADE,
+    institution_id INT REFERENCES institutions(id),
+    department_id INT REFERENCES departments(id) ON DELETE CASCADE,
+    course_id INT REFERENCES courses(id) ON DELETE CASCADE,
+    semester_id INT REFERENCES semesters(id) ON DELETE CASCADE,
+    class_id INT REFERENCES classes(id) ON DELETE CASCADE,
+    registration_no VARCHAR(100) UNIQUE,
+    roll_no VARCHAR(50),
+    student_name VARCHAR(255) NOT NULL,
+    gender VARCHAR(20),
+    date_of_birth DATE,
+    mobile_no VARCHAR(20),
+    email VARCHAR(150) UNIQUE,
+    guardian_name VARCHAR(255),
+    guardian_mobile_no VARCHAR(20),
+    address VARCHAR(500),
+    admission_year INT,
+    is_active BOOLEAN,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+---------------------------------------------------------
+-- 10. Teachers
+---------------------------------------------------------
+CREATE TABLE IF NOT EXISTS teachers (
+    id SERIAL PRIMARY KEY,
+    user_id INT REFERENCES users(id) ON DELETE CASCADE,
+    institution_id INT REFERENCES institutions(id),
+    department_id INT REFERENCES departments(id) ON DELETE CASCADE,
+    employee_code VARCHAR(100),
+    teacher_name VARCHAR(255) NOT NULL,
     designation VARCHAR(100),
-    employment_type VARCHAR(50), -- 'FULL_TIME', 'PART_TIME', etc.
-    is_active BOOLEAN DEFAULT TRUE,
-    face_enrolled BOOLEAN DEFAULT FALSE,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    qualification VARCHAR(255),
+    mobile_no VARCHAR(20),
+    email VARCHAR(150) UNIQUE,
+    joining_date DATE,
+    employment_type VARCHAR(50),
+    is_active BOOLEAN,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP 
 );
 
--- 6. Enrollment Sessions
-CREATE TABLE IF NOT EXISTS enrollment_sessions (
+---------------------------------------------------------
+-- 11. Principals
+---------------------------------------------------------
+CREATE TABLE IF NOT EXISTS principals (
     id SERIAL PRIMARY KEY,
-    enrollment_session_id VARCHAR(100) UNIQUE,
-    employee_id INTEGER REFERENCES employees(id),
-    device_id VARCHAR(255),
-    initiated_by INTEGER REFERENCES users(id),
-    status VARCHAR(50) DEFAULT 'IN_PROGRESS', -- 'IN_PROGRESS', 'COMPLETED', 'CANCELLED'
-    sample_count INTEGER DEFAULT 0,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    completed_at TIMESTAMP WITH TIME ZONE
+    user_id INT REFERENCES users(id) ON DELETE CASCADE,
+    institution_id INT REFERENCES institutions(id),
+    principal_name VARCHAR(255) NOT NULL,
+    mobile_no VARCHAR(20),
+    email VARCHAR(150) UNIQUE,
+    joining_date DATE,
+    is_active BOOLEAN,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- 7. Enrollment Samples
-CREATE TABLE IF NOT EXISTS enrollment_samples (
+---------------------------------------------------------
+-- 12. Teacher Subject Mapping
+---------------------------------------------------------
+
+CREATE TABLE IF NOT EXISTS teacher_subject_mapping (
     id SERIAL PRIMARY KEY,
-    sample_id UUID UNIQUE,
-    enrollment_session_id INTEGER REFERENCES enrollment_sessions(id),
-    sample_no INTEGER NOT NULL,
-    image_url TEXT,
-    image_base64 TEXT,
-    quality_score DECIMAL(5, 4),
-    liveness_score DECIMAL(5, 4),
-    yaw DECIMAL(10, 4),
-    pitch DECIMAL(10, 4),
-    roll DECIMAL(10, 4),
-    face_embedding JSONB,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    teacher_id INT REFERENCES teachers(id) ON DELETE CASCADE,
+    institution_id INT REFERENCES institutions(id) ON DELETE CASCADE,
+    subject_id INT REFERENCES subjects(id) ON DELETE CASCADE,
+    class_id INT REFERENCES classes(id) ON DELETE CASCADE,
+    academic_year VARCHAR(20),
+    is_active BOOLEAN
 );
 
--- 8. Face Templates (Approved templates)
-CREATE TABLE IF NOT EXISTS face_templates (
+---------------------------------------------------------
+-- 13. Student Class Mapping
+---------------------------------------------------------
+CREATE TABLE IF NOT EXISTS student_class_mapping (
     id SERIAL PRIMARY KEY,
-    template_id UUID UNIQUE,
-    employee_id INTEGER REFERENCES employees(id),
-    enrollment_session_id INTEGER REFERENCES enrollment_sessions(id),
-    aggregate_embedding JSONB,
-    reference_image_url TEXT,
-    sample_count INTEGER,
-    quality_avg DECIMAL(5, 4),
-    liveness_avg DECIMAL(5, 4),
-    is_active BOOLEAN DEFAULT FALSE,
-    approval_status VARCHAR(50) DEFAULT 'PENDING_APPROVAL',
-    approved_by INTEGER REFERENCES users(id),
-    approved_at TIMESTAMP WITH TIME ZONE,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    student_id INT REFERENCES students(id) ON DELETE CASCADE,
+    class_id INT REFERENCES classes(id) ON DELETE CASCADE,
+    academic_year VARCHAR(20),
+    is_active BOOLEAN
 );
 
--- 9. Attendance Logs
-CREATE TABLE IF NOT EXISTS attendance_logs (
+---------------------------------------------------------
+-- 14. Attendance Sessions
+---------------------------------------------------------
+CREATE TABLE IF NOT EXISTS attendance_sessions (
     id SERIAL PRIMARY KEY,
-    attendance_id UUID UNIQUE,
-    employee_id INTEGER REFERENCES employees(id),
-    office_id INTEGER REFERENCES offices(id),
-    shift_id INTEGER REFERENCES shifts(id),
-    event_type VARCHAR(50) NOT NULL, -- 'CHECK_IN', 'CHECK_OUT'
+    institution_id INT REFERENCES institutions(id),
+    class_id INT REFERENCES classes(id),
+    subject_id INT REFERENCES subjects(id),
+    teacher_id INT REFERENCES teachers(id),
     attendance_date DATE NOT NULL,
-    event_timestamp TIMESTAMP WITH TIME ZONE NOT NULL,
-    latitude DECIMAL(10, 8),
-    longitude DECIMAL(11, 8),
-    location_accuracy_m DECIMAL(10, 2),
-    geofence_status VARCHAR(50), -- 'INSIDE', 'OUTSIDE', 'SKIPPED'
-    face_match_score DECIMAL(5, 4),
-    liveness_score DECIMAL(5, 4),
-    verification_status VARCHAR(50) DEFAULT 'APPROVED',
-    device_id VARCHAR(255),
-    network_mode VARCHAR(50), -- 'ONLINE', 'OFFLINE'
-    offline_flag BOOLEAN DEFAULT FALSE,
-    selfie_image_url TEXT,
-    shift_status VARCHAR(50), -- 'on_time', 'late', etc.
-    remarks TEXT,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    session_start_time TIME,
+    session_end_time TIME,
+    attendance_mode attendance_mode_enum,
+    latitude DECIMAL(10, 7),
+    longitude DECIMAL(10, 7),
+    location_accuracy DECIMAL(10, 2),
+    classroom_photo_path VARCHAR(500),
+    device_id VARCHAR(200),
+    is_submitted BOOLEAN DEFAULT FALSE,
+    submitted_at TIMESTAMP WITH TIME ZONE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- 10. Attendance Daily Summary
-CREATE TABLE IF NOT EXISTS attendance_daily_summary (
+---------------------------------------------------------
+-- 15. Student Attendance
+---------------------------------------------------------
+CREATE TABLE IF NOT EXISTS student_attendance (
     id SERIAL PRIMARY KEY,
-    employee_id INTEGER REFERENCES employees(id),
+    attendance_session_id INT REFERENCES attendance_sessions(id) ON DELETE CASCADE,
+    student_id INT REFERENCES students(id) ON DELETE CASCADE,
+    attendance_status attendance_status_enum,
+    marked_by_teacher_id INT REFERENCES teachers(id) ON DELETE SET NULL,
+    is_ai_recognized BOOLEAN,
+    recognition_confidence DECIMAL(5, 2) NULL,
+    face_match_status VARCHAR(50) NULL,
+    remarks VARCHAR(300) NULL,
+    marked_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+---------------------------------------------------------
+-- 16. Teacher Attendance
+---------------------------------------------------------
+CREATE TABLE IF NOT EXISTS teacher_attendance (
+    id SERIAL PRIMARY KEY,
+    teacher_id INT REFERENCES teachers(id) ON DELETE CASCADE,
+    institution_id INT REFERENCES institutions(id) ON DELETE CASCADE,
     attendance_date DATE NOT NULL,
-    first_check_in TIMESTAMP WITH TIME ZONE,
-    last_check_out TIMESTAMP WITH TIME ZONE,
-    total_work_minutes INTEGER DEFAULT 0,
-    day_status VARCHAR(50) DEFAULT 'PRESENT',
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(employee_id, attendance_date)
+    attendance_status VARCHAR(30),
+    marked_by_principal_id INT REFERENCES principals(id) ON DELETE SET NULL,
+    latitude DECIMAL(10, 7),
+    longitude DECIMAL(10, 7),
+    photo_path VARCHAR(500) NULL,
+    device_id VARCHAR(200),
+    remarks VARCHAR(300) NULL,
+    marked_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- 11. Geofences
-CREATE TABLE IF NOT EXISTS geofences (
+---------------------------------------------------------
+-- 17. Face Enrollment
+---------------------------------------------------------
+CREATE TABLE IF NOT EXISTS face_enrollment (
     id SERIAL PRIMARY KEY,
-    geofence_id UUID UNIQUE,
-    office_id INTEGER REFERENCES offices(id),
-    geofence_name VARCHAR(255),
-    latitude DECIMAL(10, 8) NOT NULL,
-    longitude DECIMAL(11, 8) NOT NULL,
-    radius_m INTEGER DEFAULT 200,
-    is_active BOOLEAN DEFAULT TRUE,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    user_id INT REFERENCES users(id) ON DELETE CASCADE,
+    institution_id INT REFERENCES institutions(id) ON DELETE CASCADE,
+    enrollment_status VARCHAR(50),
+    enrollment_date DATE,
+    enrolled_by_user_id INT REFERENCES users(id) ON DELETE SET NULL,
+    is_active BOOLEAN,
+    remarks VARCHAR(300) NULL
 );
 
--- 12. Attendance Policies
-CREATE TABLE IF NOT EXISTS attendance_policies (
+---------------------------------------------------------
+-- 18. Face Embeddings
+---------------------------------------------------------
+CREATE TABLE IF NOT EXISTS face_embedding (
     id SERIAL PRIMARY KEY,
-    policy_id UUID UNIQUE,
-    office_id INTEGER REFERENCES offices(id) UNIQUE,
-    require_face_match BOOLEAN DEFAULT TRUE,
-    require_liveness BOOLEAN DEFAULT TRUE,
-    require_geofence BOOLEAN DEFAULT TRUE,
-    allow_offline BOOLEAN DEFAULT TRUE,
-    max_offline_hours INTEGER DEFAULT 24,
-    allow_field_mode BOOLEAN DEFAULT FALSE,
-    max_daily_attempts INTEGER DEFAULT 10,
-    duplicate_window_sec INTEGER DEFAULT 300,
+    face_enrollment_id INT REFERENCES face_enrollment(id) ON DELETE CASCADE,
+    user_id INT REFERENCES users(id) ON DELETE CASCADE,
+    embedding_vector VECTOR(128),
+    model_name VARCHAR(100),
+    model_version VARCHAR(50),
+    embedding_hash VARCHAR(256),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    is_active BOOLEAN
 );
 
--- 13. Attendance Exceptions
-CREATE TABLE IF NOT EXISTS attendance_exceptions (
+---------------------------------------------------------
+-- 19. Face Enrollment Images
+---------------------------------------------------------
+CREATE TABLE IF NOT EXISTS face_enrollment_images (
     id SERIAL PRIMARY KEY,
-    exception_id UUID UNIQUE,
-    employee_id INTEGER REFERENCES employees(id),
-    exception_type VARCHAR(100) NOT NULL,
+    face_enrollment_id INT REFERENCES face_enrollment(id) ON DELETE CASCADE,
+    image_path VARCHAR(500) NOT NULL,
+    image_angle image_angle_enum,
+    image_quality_score DECIMAL(5, 2),
+    is_approved BOOLEAN,
+    captured_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+---------------------------------------------------------
+-- 20. Academic Calendar
+---------------------------------------------------------
+
+CREATE TABLE IF NOT EXISTS academic_calendar (
+    id SERIAL PRIMARY KEY,
+    institution_id INT REFERENCES institutions(id) ON DELETE CASCADE,
+    academic_year VARCHAR(20),
+    event_title VARCHAR(200),
+    event_type VARCHAR(100),
     event_date DATE NOT NULL,
-    reason TEXT,
-    status VARCHAR(50) DEFAULT 'PENDING', -- 'PENDING', 'APPROVED', 'REJECTED'
-    review_remarks TEXT,
-    reviewed_by INTEGER REFERENCES users(id),
-    reviewed_at TIMESTAMP WITH TIME ZONE,
+    end_date DATE NULL,
+    description VARCHAR(500),
+    created_by_user_id INT REFERENCES users(id) ON DELETE SET NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    is_active BOOLEAN
+);
+
+
+---------------------------------------------------------
+-- 21. Leave Types
+---------------------------------------------------------
+CREATE TABLE IF NOT EXISTS leave_types (
+    id SERIAL PRIMARY KEY,
+    leave_type_name leave_type_enum,
+    description VARCHAR(300),
+    is_active BOOLEAN
+);
+
+---------------------------------------------------------
+-- 22. Leave Applications
+---------------------------------------------------------
+CREATE TABLE IF NOT EXISTS leave_applications (
+    id SERIAL PRIMARY KEY,
+    user_id INT REFERENCES users(id) ON DELETE CASCADE,
+    institution_id INT REFERENCES institutions(id) ON DELETE CASCADE,
+    leave_type_id INT REFERENCES leave_types(id) ON DELETE CASCADE,
+    from_date DATE NOT NULL,
+    to_date DATE NOT NULL,
+    total_days DECIMAL(5,2),
+    reason VARCHAR(500),
+    attachment_path VARCHAR(500) NULL,
+    application_status VARCHAR(30),
+    approved_by_user_id INT REFERENCES users(id) ON DELETE SET NULL,
+    approved_at TIMESTAMP WITH TIME ZONE,
+    rejection_reason VARCHAR(500) NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+---------------------------------------------------------
+-- 23. User Devices
+---------------------------------------------------------
+
+CREATE TABLE IF NOT EXISTS user_devices (
+    id SERIAL PRIMARY KEY,
+    user_id INT REFERENCES users(id) ON DELETE CASCADE,
+    device_id VARCHAR(200) UNIQUE,
+    device_name VARCHAR(200),
+    device_os VARCHAR(100),
+    app_version VARCHAR(50),
+    is_approved BOOLEAN,
+    registered_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    last_used_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+---------------------------------------------------------
+-- 24. Login Logs
+---------------------------------------------------------
+CREATE TABLE IF NOT EXISTS login_logs (
+    id SERIAL PRIMARY KEY,
+    user_id INT REFERENCES users(id) ON DELETE CASCADE,
+    login_time TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    logout_time TIMESTAMP WITH TIME ZONE,
+    ip_address VARCHAR(50),
+    device_id VARCHAR(200),
+    login_status VARCHAR(50)
+);
+---------------------------------------------------------
+-- 25. AI Session Processing
+---------------------------------------------------------
+CREATE TABLE IF NOT EXISTS ai_session_processing (
+    id SERIAL PRIMARY KEY,
+    attendance_session_id INT REFERENCES attendance_sessions(id),
+    total_faces_detected INT,
+    total_faces_recognized INT,
+    total_unrecognized_faces INT,
+    processing_status VARCHAR(50),
+    processing_started_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    processing_completed_at TIMESTAMP WITH TIME ZONE,
+    error_message VARCHAR(1000) NULL
+);
+
+---------------------------------------------------------
+-- 26. System Settings  
+---------------------------------------------------------
+CREATE TABLE IF NOT EXISTS system_settings (
+    id SERIAL PRIMARY KEY,
+    setting_key VARCHAR(100) UNIQUE NOT NULL,
+    setting_value TEXT NULL,
+    description VARCHAR(300),
+    updated_by_user_id INT,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- 14. Device Registry
-CREATE TABLE IF NOT EXISTS device_registry (
+---------------------------------------------------------
+-- 27. File Uploads
+---------------------------------------------------------
+CREATE TABLE IF NOT EXISTS file_uploads (
     id SERIAL PRIMARY KEY,
-    device_registry_id UUID UNIQUE,
-    employee_id INTEGER REFERENCES employees(id),
-    device_id VARCHAR(255) NOT NULL,
-    device_name VARCHAR(255),
-    device_model VARCHAR(255),
-    os_version VARCHAR(50),
-    app_version VARCHAR(50),
-    push_token TEXT,
-    is_trusted BOOLEAN DEFAULT TRUE,
-    trust_score DECIMAL(3, 2) DEFAULT 1.0,
-    registered_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    last_seen_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(employee_id, device_id)
+    uploaded_by_user_id INT REFERENCES users(id) ON DELETE CASCADE,
+    institution_id INT NULL,
+    file_type VARCHAR(100),
+    file_name VARCHAR(300),
+    file_path TEXT NOT NULL,
+    mime_type VARCHAR(100),
+    file_size_kb DECIMAL(12,2),
+    uploaded_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    is_active BOOLEAN
 );
 
--- 15. Audit Logs
+---------------------------------------------------------
+-- 28. Face Recognition Logs
+---------------------------------------------------------
+CREATE TABLE IF NOT EXISTS face_recognition_logs (
+    id SERIAL PRIMARY KEY,
+    attendance_session_id INT REFERENCES attendance_sessions(id),
+    student_id INT REFERENCES students(id),
+    teacher_id INT REFERENCES teachers(id),
+    detected_face_image_path VARCHAR(500) NULL,
+    recognition_status VARCHAR(50),
+    confidence_score DECIMAL(5,2),
+    matched_face_enrollment_id INT REFERENCES face_enrollment(id),
+    processed_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    remarks VARCHAR(300) NULL
+);
+
+---------------------------------------------------------
+-- 29. Audit Logs
+---------------------------------------------------------
 CREATE TABLE IF NOT EXISTS audit_logs (
     id SERIAL PRIMARY KEY,
-    audit_id UUID UNIQUE,
-    actor_user_id INTEGER, -- References users(id) but not enforced if system/deleted
-    actor_role VARCHAR(50),
-    action_type VARCHAR(100) NOT NULL,
-    entity_name VARCHAR(100),
-    entity_id VARCHAR(100),
-    old_value_json JSONB,
-    new_value_json JSONB,
-    ip_address VARCHAR(45),
-    device_id VARCHAR(255),
+    user_id INT REFERENCES users(id) ON DELETE SET NULL,
+    action_type VARCHAR(100),
+    table_name VARCHAR(100),
+    record_id VARCHAR(100),
+    old_value TEXT NULL,
+    new_value TEXT NULL,
+    ip_address VARCHAR(50) NULL,
+    device_id VARCHAR(200) NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+---------------------------------------------------------
+-- 30. Notifications
+---------------------------------------------------------
+CREATE TABLE IF NOT EXISTS notifications (
+    id SERIAL PRIMARY KEY,
+    user_id INT REFERENCES users(id) ON DELETE CASCADE,
+    title VARCHAR(200),
+    message VARCHAR(1000),
+    notification_type VARCHAR(100),
+    is_read BOOLEAN,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    read_at TIMESTAMP WITH TIME ZONE
 );
 
--- Indices for performance
-CREATE INDEX idx_attendance_date ON attendance_logs(attendance_date);
-CREATE INDEX idx_attendance_employee ON attendance_logs(employee_id);
-CREATE INDEX idx_employees_code ON employees(employee_code);
-CREATE INDEX idx_audit_created ON audit_logs(created_at);

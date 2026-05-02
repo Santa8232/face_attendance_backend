@@ -6,27 +6,26 @@ const { asyncHandler, ok, fail } = require('../utils/helpers');
 const dailySummary = asyncHandler(async (req, res) => {
   const { office_id, date } = req.query;
   const targetDate = date || new Date().toISOString().slice(0, 10);
-  const offId = office_id ? parseInt(office_id) : null;
 
   const logs = await store.findMany(TABLES.ATTENDANCE_LOGS, l =>
-    String(l.attendance_date).slice(0, 10) === targetDate &&
-    (!offId || l.office_id === offId)
+    l.attendance_date === targetDate &&
+    (!office_id || String(l.office_id) === String(office_id)),
   );
 
   const employees = await store.findMany(TABLES.EMPLOYEES, e =>
-    e.is_active && (!offId || e.office_id === offId)
+    e.is_active && (!office_id || String(e.office_id) === String(office_id)),
   );
 
   const checkedIn  = new Set(logs.filter(l => l.event_type === 'CHECK_IN').map(l => l.employee_id));
   const checkedOut = new Set(logs.filter(l => l.event_type === 'CHECK_OUT').map(l => l.employee_id));
-  const lateArrivals = logs.filter(l => l.event_type === 'CHECK_IN' && (l.shift_status === 'late' || l.shift_status === 'very_late'));
+  const lateArrivals = logs.filter(l => l.event_type === 'CHECK_IN' && l.shift_status === 'late' || l.shift_status === 'very_late');
 
   const presentIds = [...checkedIn];
-  const absentIds  = employees.filter(e => !checkedIn.has(e.id)).map(e => e.id);
+  const absentIds  = employees.filter(e => !checkedIn.has(e.employee_id)).map(e => e.employee_id);
 
   return ok(res, {
     date:              targetDate,
-    office_id:         offId,
+    office_id:         office_id || null,
     total_employees:   employees.length,
     present:           checkedIn.size,
     absent:            absentIds.length,
@@ -42,21 +41,20 @@ const dailySummary = asyncHandler(async (req, res) => {
 const lateArrivals = asyncHandler(async (req, res) => {
   const { office_id, month } = req.query;
   if (!month) return fail(res, 'month query param is required (YYYY-MM)');
-  const offId = office_id ? parseInt(office_id) : null;
 
   const logs = await store.findMany(TABLES.ATTENDANCE_LOGS, l =>
     l.event_type === 'CHECK_IN' &&
-    String(l.attendance_date).startsWith(month) &&
+    l.attendance_date?.startsWith(month) &&
     (l.shift_status === 'late' || l.shift_status === 'very_late') &&
-    (!offId || l.office_id === offId)
+    (!office_id || String(l.office_id) === String(office_id)),
   );
 
+  // Enrich with employee name
   const enriched = [];
   for (const l of logs) {
-    const emp = await store.getById(TABLES.EMPLOYEES, l.employee_id);
+    const emp = await store.getById(TABLES.EMPLOYEES, 'employee_id', l.employee_id);
     enriched.push({
       attendance_id:   l.attendance_id,
-      id:              l.id,
       employee_id:     l.employee_id,
       employee_code:   emp?.employee_code || null,
       employee_name:   emp?.full_name     || null,
@@ -66,10 +64,10 @@ const lateArrivals = asyncHandler(async (req, res) => {
     });
   }
 
-  enriched.sort((a, b) => String(a.date).localeCompare(String(b.date)));
+  enriched.sort((a, b) => a.date.localeCompare(b.date));
 
   return ok(res, {
-    month, office_id: offId,
+    month, office_id: office_id || null,
     total_late: enriched.length,
     records:    enriched,
   });
@@ -79,21 +77,19 @@ const lateArrivals = asyncHandler(async (req, res) => {
 const monthlyExport = asyncHandler(async (req, res) => {
   const { office_id, month, format = 'json' } = req.query;
   if (!month) return fail(res, 'month query param is required (YYYY-MM)');
-  const offId = office_id ? parseInt(office_id) : null;
 
   const employees = await store.findMany(TABLES.EMPLOYEES, e =>
-    e.is_active && (!offId || e.office_id === offId)
+    e.is_active && (!office_id || String(e.office_id) === String(office_id)),
   );
-  const empIds = new Set(employees.map(e => e.id));
 
   const summaries = await store.findMany(TABLES.ATTENDANCE_SUMMARY, s =>
-    String(s.attendance_date).startsWith(month) &&
-    empIds.has(s.employee_id)
+    s.attendance_date?.startsWith(month) &&
+    (!office_id || employees.some(e => e.employee_id === s.employee_id)),
   );
 
   const rows = [];
   for (const s of summaries) {
-    const emp = await store.getById(TABLES.EMPLOYEES, s.employee_id);
+    const emp = await store.getById(TABLES.EMPLOYEES, 'employee_id', s.employee_id);
     rows.push({
       employee_id:        s.employee_id,
       employee_code:      emp?.employee_code || '',
@@ -109,11 +105,10 @@ const monthlyExport = asyncHandler(async (req, res) => {
     });
   }
 
-  rows.sort((a, b) => String(a.date).localeCompare(String(b.date)) || a.employee_code.localeCompare(b.employee_code));
+  rows.sort((a, b) => a.date.localeCompare(b.date) || a.employee_code.localeCompare(b.employee_code));
 
   if (format === 'csv') {
-    if (!rows.length) return res.send('No data');
-    const headers = Object.keys(rows[0]).join(',');
+    const headers = Object.keys(rows[0] || {}).join(',');
     const csvRows = rows.map(r => Object.values(r).map(v => `"${v}"`).join(','));
     const csv     = [headers, ...csvRows].join('\n');
     res.setHeader('Content-Type', 'text/csv');
@@ -122,7 +117,7 @@ const monthlyExport = asyncHandler(async (req, res) => {
   }
 
   return ok(res, {
-    month, office_id: offId,
+    month, office_id: office_id || null,
     total_records: rows.length,
     records: rows,
   });

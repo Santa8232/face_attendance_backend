@@ -1,8 +1,8 @@
 const router = require('express').Router();
-const ctrl      = require('../../controllers/enrollmentController');
-const faceVCtrl = require('../../controllers/faceVerificationController');
-const { authenticate, authorize } = require('../../middleware/auth');
-const upload    = require('../../middleware/upload');
+const ctrl      = require('../controllers/enrollmentController');
+const faceVCtrl = require('../controllers/faceVerificationController');
+const { authenticate, authorize } = require('../middleware/auth');
+const upload    = require('../middleware/upload');
 
 router.use(authenticate);
 router.use((req, _res, next) => { req.uploadSubDir = 'enrollment'; next(); });

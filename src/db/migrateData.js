@@ -17,127 +17,166 @@ const loadJson = (filename) => {
 };
 
 const migrate = async () => {
+  // Mapping object to store old_id -> new_uuid translations for FK integrity
   const mapping = {
-    users: {},
-    offices: {},
+    institutions: {},
     departments: {},
-    shifts: {},
-    employees: {},
-    sessions: {},
+    courses: {},
+    semesters: {},
+    subjects: {},
+    classes: {},
+    user_roles: {},
+    users: {},
+    students: {},
+    teachers: {},
+    principals: {},
+    face_enrollment: {},
   };
 
   try {
-    console.log('🚀 Starting migration from JSON to PostgreSQL...');
+    console.log('🚀 Starting Academic System migration to PostgreSQL...');
 
-    // 1. Users
-    const users = loadJson('users.json');
-    console.log(`  - Migrating ${users.length} users...`);
-    for (const user of users) {
-      const { user_id, ...data } = user;
-      const res = await store.insert(TABLES.USERS, { ...data, user_id });
-      mapping.users[user_id] = res.id;
+    // 1. Institutions (The Root)
+    const institutions = loadJson('institutions.json');
+    console.log(`  - Migrating ${institutions.length} institutions...`);
+    for (const inst of institutions) {
+      const { id, ...data } = inst;
+      const res = await store.insert(TABLES.INSTITUTIONS, { ...data });
+      mapping.institutions[id] = res.id;
     }
 
-    // 2. Offices
-    const offices = loadJson('offices.json');
-    console.log(`  - Migrating ${offices.length} offices...`);
-    for (const office of offices) {
-      const { office_id, ...data } = office;
-      const res = await store.insert(TABLES.OFFICES, { ...data, office_id });
-      mapping.offices[office_id] = res.id;
+    // 2. User Roles
+    const roles = loadJson('user_roles.json');
+    console.log(`  - Migrating ${roles.length} roles...`);
+    for (const role of roles) {
+      const { id, ...data } = role;
+      const res = await store.insert(TABLES.USER_ROLES, { ...data });
+      mapping.user_roles[id] = res.id;
     }
 
     // 3. Departments
-    const departments = loadJson('departments.json');
-    console.log(`  - Migrating ${departments.length} departments...`);
-    for (const dept of departments) {
-      const { department_id, office_id, ...data } = dept;
+    const depts = loadJson('departments.json');
+    console.log(`  - Migrating ${depts.length} departments...`);
+    for (const dept of depts) {
+      const { id, institution_id, ...data } = dept;
       const res = await store.insert(TABLES.DEPARTMENTS, {
         ...data,
-        department_id,
-        office_id: mapping.offices[office_id] || null
+        institution_id: mapping.institutions[institution_id]
       });
-      mapping.departments[department_id] = res.id;
+      mapping.departments[id] = res.id;
     }
 
-    // 4. Shifts
-    const shifts = loadJson('shifts.json');
-    console.log(`  - Migrating ${shifts.length} shifts...`);
-    for (const shift of shifts) {
-      const { shift_id, office_id, ...data } = shift;
-      const res = await store.insert(TABLES.SHIFTS, {
+    // 4. Courses
+    const courses = loadJson('courses.json');
+    console.log(`  - Migrating ${courses.length} courses...`);
+    for (const course of courses) {
+      const { id, institution_id, department_id, ...data } = course;
+      const res = await store.insert(TABLES.COURSES, {
         ...data,
-        shift_id,
-        office_id: mapping.offices[office_id] || null
+        institution_id: mapping.institutions[institution_id],
+        department_id: mapping.departments[department_id]
       });
-      mapping.shifts[shift_id] = res.id;
+      mapping.courses[id] = res.id;
     }
 
-    // 5. Employees
-    const employees = loadJson('employees.json');
-    console.log(`  - Migrating ${employees.length} employees...`);
-    for (const emp of employees) {
-      const { employee_id, user_id, office_id, department_id, shift_id, ...data } = emp;
-      const res = await store.insert(TABLES.EMPLOYEES, {
+    // 5. Users
+    const users = loadJson('users.json');
+    console.log(`  - Migrating ${users.length} users...`);
+    for (const user of users) {
+      const { id, institution_id, user_role_id, ...data } = user;
+      const res = await store.insert(TABLES.USERS, {
         ...data,
-        employee_id,
-        user_id: mapping.users[user_id] || null,
-        office_id: mapping.offices[office_id] || null,
-        department_id: mapping.departments[department_id] || null,
-        shift_id: mapping.shifts[shift_id] || null,
+        institution_id: mapping.institutions[institution_id],
+        user_role_id: mapping.user_roles[user_role_id]
       });
-      mapping.employees[employee_id] = res.id;
+      mapping.users[id] = res.id;
     }
 
-    // 6. Geofences
-    const geofences = loadJson('geofences.json');
-    console.log(`  - Migrating ${geofences.length} geofences...`);
-    for (const geo of geofences) {
-      const { geofence_id, office_id, ...data } = geo;
-      await store.insert(TABLES.GEOFENCES, {
+    // 6. Semesters
+    const semesters = loadJson('semesters.json');
+    console.log(`  - Migrating ${semesters.length} semesters...`);
+    for (const sem of semesters) {
+      const { id, course_id, ...data } = sem;
+      const res = await store.insert(TABLES.SEMESTERS, {
         ...data,
-        geofence_id,
-        office_id: mapping.offices[office_id] || null
+        course_id: mapping.courses[course_id]
       });
+      mapping.semesters[id] = res.id;
     }
 
-    // 7. Attendance Policies
-    const policies = loadJson('attendance_policies.json');
-    console.log(`  - Migrating ${policies.length} policies...`);
-    for (const p of policies) {
-      const { policy_id, office_id, ...data } = p;
-      await store.insert(TABLES.ATTENDANCE_POLICIES, {
+    // 7. Classes
+    const classes = loadJson('classes.json');
+    console.log(`  - Migrating ${classes.length} classes...`);
+    for (const cls of classes) {
+      const { id, institution_id, course_id, semester_id, ...data } = cls;
+      const res = await store.insert(TABLES.CLASSES, {
         ...data,
-        policy_id,
-        office_id: mapping.offices[office_id] || null
+        institution_id: mapping.institutions[institution_id],
+        course_id: mapping.courses[course_id],
+        semester_id: mapping.semesters[semester_id]
       });
+      mapping.classes[id] = res.id;
     }
 
-    // 8. Device Registry
-    const devices = loadJson('device_registry.json');
-    console.log(`  - Migrating ${devices.length} devices...`);
-    for (const device of devices) {
-      const { device_registry_id, employee_id, ...data } = device;
-      await store.insert(TABLES.DEVICE_REGISTRY, {
+    // 8. Students
+    const students = loadJson('students.json');
+    console.log(`  - Migrating ${students.length} students...`);
+    for (const std of students) {
+      const { id, user_id, institution_id, class_id, department_id, course_id, semester_id, ...data } = std;
+      const res = await store.insert(TABLES.STUDENTS, {
         ...data,
-        device_registry_id,
-        employee_id: mapping.employees[employee_id] || null
+        user_id: mapping.users[user_id],
+        institution_id: mapping.institutions[institution_id],
+        class_id: mapping.classes[class_id],
+        department_id: mapping.departments[department_id],
+        course_id: mapping.courses[course_id],
+        semester_id: mapping.semesters[semester_id]
       });
+      mapping.students[id] = res.id;
     }
 
-    // 9. Audit Logs
-    const auditLogs = loadJson('audit_logs.json');
-    console.log(`  - Migrating ${auditLogs.length} audit logs...`);
-    for (const log of auditLogs) {
-      const { audit_id, actor_user_id, ...data } = log;
-      await store.insert(TABLES.AUDIT_LOGS, {
+    // 9. Teachers
+    const teachers = loadJson('teachers.json');
+    console.log(`  - Migrating ${teachers.length} teachers...`);
+    for (const t of teachers) {
+      const { id, user_id, institution_id, department_id, ...data } = t;
+      const res = await store.insert(TABLES.TEACHERS, {
         ...data,
-        audit_id,
-        actor_user_id: mapping.users[actor_user_id] || null
+        user_id: mapping.users[user_id],
+        institution_id: mapping.institutions[institution_id],
+        department_id: mapping.departments[department_id]
       });
+      mapping.teachers[id] = res.id;
     }
 
-    console.log('\n✅ Migration complete!');
+    // 10. Principals
+    const principals = loadJson('principals.json');
+    console.log(`  - Migrating ${principals.length} principals...`);
+    for (const p of principals) {
+      const { id, user_id, institution_id, ...data } = p;
+      const res = await store.insert(TABLES.PRINCIPALS, {
+        ...data,
+        user_id: mapping.users[user_id],
+        institution_id: mapping.institutions[institution_id]
+      });
+      mapping.principals[id] = res.id;
+    }
+
+    // 11. Face Enrollment
+    const enrollments = loadJson('face_enrollment.json');
+    console.log(`  - Migrating ${enrollments.length} face enrollments...`);
+    for (const fe of enrollments) {
+      const { id, user_id, student_id, institution_id, enrolled_by_user_id, ...data } = fe;
+      const res = await store.insert(TABLES.FACE_ENROLLMENT, {
+        ...data,
+        user_id: mapping.users[user_id],
+        institution_id: mapping.institutions[institution_id],
+        enrolled_by_user_id: mapping.users[enrolled_by_user_id]
+      });
+      mapping.face_enrollment[id] = res.id;
+    }
+
+    console.log('\n✅ Academic Data Migration complete!');
     process.exit(0);
   } catch (err) {
     console.error('\n❌ Migration Failed:', err.stack);

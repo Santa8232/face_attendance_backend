@@ -3,7 +3,7 @@
  * Truncates all tables in the public schema and resets their identities.
  */
 
-const { pool } = require("../db");
+const { pool } = require("./db");
 
 const cleanTablesData = async () => {
   try {

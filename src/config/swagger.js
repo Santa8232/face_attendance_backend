@@ -52,12 +52,24 @@ const definition = {
         properties: {
           username: {
             type: "string",
-            example: "2026/CSE/001",
             description: "username, employee_code, or registration_no",
           },
-          password: { type: "string", example: "Secure@1234" },
-          device_id: { type: "string", example: "a1b2c3d4e5", description: "FCM token for push notifications" },
+          password: { type: "string" },
+          device_id: { type: "string", description: "Unique device identifier" },
+          device_name: { type: "string" },
+          device_model: { type: "string" },
+          os_version: { type: "string" },
+          app_version: { type: "string" },
         },
+        example: {
+          username: "prof_smith",
+          password: "password123",
+          device_id: "UOAS34.216-230-3",
+          device_name: "motorola",
+          device_model: "moto g35 5G",
+          os_version: "14",
+          app_version: "1.0.0"
+        }
       },
       LoginResponse: {
         type: "object",
@@ -701,6 +713,37 @@ const definition = {
           },
         },
       },
+      post: {
+        tags: ["Management"],
+        summary: "Create shift (ADMIN)",
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/Shift" },
+            },
+          },
+        },
+        responses: { 201: { description: "Created" } },
+      },
+    },
+    "/api/v1/shifts/{id}": {
+      put: {
+        tags: ["Management"],
+        summary: "Update shift (ADMIN)",
+        parameters: [
+          { name: "id", in: "path", required: true, schema: { type: "integer" } },
+        ],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/Shift" },
+            },
+          },
+        },
+        responses: { 200: { description: "Updated" } },
+      },
     },
     "/api/v1/shifts/assign": {
       post: {
@@ -755,6 +798,42 @@ const definition = {
             },
           },
         },
+      },
+      post: {
+        tags: ["Management"],
+        summary: "Create geofence (ADMIN)",
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                properties: {
+                  office_id: { type: "integer" },
+                  geofence_name: { type: "string" },
+                  latitude: { type: "number" },
+                  longitude: { type: "number" },
+                  radius_m: { type: "number" },
+                },
+              },
+            },
+          },
+        },
+        responses: { 201: { description: "Created" } },
+      },
+    },
+    "/api/v1/geofences/{id}": {
+      put: {
+        tags: ["Management"],
+        summary: "Update geofence (ADMIN)",
+        parameters: [
+          { name: "id", in: "path", required: true, schema: { type: "integer" } },
+        ],
+        requestBody: {
+          required: true,
+          content: { "application/json": { schema: { type: "object" } } },
+        },
+        responses: { 200: { description: "Updated" } },
       },
     },
     "/api/v1/geofences/validate": {

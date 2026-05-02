@@ -1,7 +1,7 @@
 const { v4: uuidv4 } = require('uuid');
-const store  = require('../../db/store');
+const store  = require('../db/store');
 const { TABLES } = store;
-const { asyncHandler, ok, fail } = require('../../utils/helpers');
+const { asyncHandler, ok, fail } = require('../utils/helpers');
 
 const EXCEPTION_TYPES = [
   'face_mismatch','poor_network','geofence_failure',

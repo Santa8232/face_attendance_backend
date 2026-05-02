@@ -21,16 +21,16 @@ const adminRoutes      = require('./routes/adminRoutes');
 const deviceRoutes     = require('./routes/deviceRoutes');
 
 // ── Routes (v1 spec-compliant) ────────────────────────────────────────────────
-const v1AuthRoutes       = require('./routes/v1/authRoutes');
-const v1EmployeeRoutes   = require('./routes/v1/employeeRoutes');
-const v1FaceRoutes       = require('./routes/v1/faceRoutes');
-const v1AttendanceRoutes = require('./routes/v1/attendanceRoutes');
-const v1ShiftsRoutes     = require('./routes/v1/shiftsRoutes');
-const v1PoliciesRoutes   = require('./routes/v1/policiesRoutes');
-const v1GeofenceRoutes   = require('./routes/v1/geofenceRoutes');
-const v1DevicesRoutes    = require('./routes/v1/devicesRoutes');
-const v1ExceptionsRoutes = require('./routes/v1/exceptionsRoutes');
-const v1ReportsRoutes    = require('./routes/v1/reportsRoutes');
+const v1AuthRoutes       = require('./routes/authRoutes');
+const v1EmployeeRoutes   = require('./routes/employeeRoutes');
+const v1FaceRoutes       = require('./routes/faceRoutes');
+const v1AttendanceRoutes = require('./routes/attendanceRoutes');
+const v1ShiftsRoutes     = require('./routes/shiftsRoutes');
+const v1PoliciesRoutes   = require('./routes/policiesRoutes');
+const v1GeofenceRoutes   = require('./routes/geofenceRoutes');
+const v1DevicesRoutes    = require('./routes/devicesRoutes');
+const v1ExceptionsRoutes = require('./routes/exceptionsRoutes');
+const v1ReportsRoutes    = require('./routes/reportsRoutes');
 const loggerMiddleware   = require('./middlewares/loggerMiddleware');
 
 const app = express();
@@ -115,7 +115,7 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log('  POST  /api/v1/face/enrollment/start');
   console.log('  POST  /api/v1/face/enrollment/upload/embeded');
   console.log('  POST  /api/v1/face/enrollment/complete');
-  console.log('  POST  /api/v1/face/enrollment/:template_id/approve');
+  console.log('  POST  /api/v1/face/enrollment/:id/approve');
   console.log('  POST  /api/v1/face/enrollment/:employee_id/reset');
   console.log('  POST  /api/v1/face/verify');
   console.log('  ---');
@@ -124,14 +124,15 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log('  GET   /api/v1/attendance/my');
   console.log('  POST  /api/v1/attendance/sync');
   console.log('  ---');
-  console.log('  GET   /api/v1/shifts   POST /api/v1/shifts/assign');
-  console.log('  GET   /api/v1/policies/attendance');
-  console.log('  GET   /api/v1/geofences   POST /api/v1/geofences/validate');
-  console.log('  POST  /api/v1/devices/register   POST /api/v1/devices/rebind');
-  console.log('  POST  /api/v1/exceptions   POST /api/v1/exceptions/:id/review');
-  console.log('  GET   /api/v1/reports/daily-summary');
-  console.log('  GET   /api/v1/reports/late-arrivals');
-  console.log('  GET   /api/v1/reports/monthly-export\n');
+  console.log('  GET   /api/v1/shifts');
+  console.log('  POST  /api/v1/shifts/assign');
+  console.log('  GET   /api/v1/policies/attendance/:officeId');
+  console.log('  GET   /api/v1/geofences');
+  console.log('  POST  /api/v1/geofences/validate');
+  console.log('  ---');
+  console.log('  GET   /api/v1/exceptions');
+  console.log('  POST  /api/v1/exceptions');
+  console.log('  GET   /api/v1/reports/daily-summary\n');
 });
 
 module.exports = app;

@@ -1,202 +1,150 @@
-const bcrypt = require("bcryptjs");
-const jwt = require("jsonwebtoken");
+/**
+ * v1 Auth Controller
+ *
+ * Supports:
+ *   - Username (employee_code) OR email login
+ *   - device_id / device_name capture on login
+ *   - Access token (8h) + Refresh token (7d)
+ *   - Logout (token invalidation via in-memory denylist)
+ *   - OTP request + verify (phone/email — stub ready for SMS/email provider)
+ */
 
-const store = require("../db/suggested/store_suggested");
+const bcrypt  = require('bcryptjs');
+const jwt     = require('jsonwebtoken');
+const { v4: uuidv4 } = require('uuid');
+
+const store  = require('../db/store');
 const { TABLES } = store;
-const { JWT_SECRET, JWT_EXPIRES_IN } = require("../config/constants");
-const { asyncHandler, ok, fail } = require("../utils/helpers");
+const { JWT_SECRET, JWT_EXPIRES_IN } = require('../config/constants');
+const { asyncHandler, ok, fail } = require('../utils/helpers');
 
-const REFRESH_SECRET = process.env.REFRESH_SECRET || `${JWT_SECRET}_refresh`;
-const REFRESH_EXPIRES = "7d";
+const REFRESH_SECRET  = process.env.REFRESH_SECRET  || `${JWT_SECRET}_refresh`;
+const REFRESH_EXPIRES = '7d';
 
+// Simple in-memory stores (swap for Redis in Phase II)
 const revokedTokens = new Set();
+const otpStore      = new Map();  // key: employee_id → { otp, expires }
 
-// ── POST /api/v1/auth/login ─────────────────────────────────────────────────────
+// ── POST /api/v1/auth/login ──────────────────────────────────────────────────
 const login = asyncHandler(async (req, res) => {
-  const { username, email, password, device_id, device_name, device_model, os_version, app_version } = req.body;
-  const identifier = (username || email || "").toLowerCase().trim();
+  const { username, password, device_id, device_name } = req.body;
 
-  if (!identifier || !password)
-    return fail(res, "username and password are required");
+  if (!username || !password) return fail(res, 'username and password are required');
 
-  // Find user by username
-  let user = await store.findOne(TABLES.USERS, { username: identifier });
-
-  // If not found, search teachers by employee_code
-  if (!user) {
-    let teacher = await store.findOne(TABLES.TEACHERS, {
-      employee_code: identifier,
-    });
-    if (!teacher) {
-      teacher = await store.findOne(TABLES.TEACHERS, {
-        employee_code: identifier.toUpperCase(),
-      });
-    }
-    if (teacher && teacher.user_id) {
-      user = await store.getById(TABLES.USERS, teacher.user_id);
-    }
-  }
-
-  // If still not found, search students by registration_no
-  if (!user) {
-    let student = await store.findOne(TABLES.STUDENTS, {
-      registration_no: identifier,
-    });
-    if (!student) {
-      student = await store.findOne(TABLES.STUDENTS, {
-        registration_no: identifier.toUpperCase(),
-      });
-    }
-    if (student && student.user_id) {
-      user = await store.getById(TABLES.USERS, student.user_id);
-    }
-  }
-
-  if (!user || !user.is_active) {
-    return fail(res, "Invalid credentials", 401);
-  }
-
-  const match = await bcrypt.compare(password, user.password_hash);
-  if (!match) return fail(res, "Invalid credentials", 401);
-
-  // Get role name
-  const roleRecord = await store.getById(TABLES.USER_ROLES, user.user_role_id);
-  const roleName = roleRecord ? roleRecord.role_name : null;
-  
-
-  // Get profile
-  let profile = null;
-  if (roleName === 'Student') {
-      profile = await store.findOne(TABLES.STUDENTS, { user_id: user.id });
-  } else if (roleName === 'Teacher') {
-      profile = await store.findOne(TABLES.TEACHERS, { user_id: user.id });
-  } else if (roleName === 'Principal') {
-      profile = await store.findOne(TABLES.PRINCIPALS, { user_id: user.id });
-  }
-
-  // Check face enrollment status
-  let faceEnrolled = false;
-  const faceEnrollment = await store.findOne(TABLES.FACE_ENROLLMENT, { user_id: user.id });
-  if (faceEnrollment && faceEnrollment.enrollment_status === 'Completed') {
-      faceEnrolled = true;
-  }
-
-  const payload = {
-    id: user.id,
-    institution_id: user.institution_id,
-    username: user.username,
-    role: roleName,
-    face_enrolled: faceEnrolled || false,
-    profile_id: profile?.id || null,
-  };
-
-  const access_token = jwt.sign(payload, JWT_SECRET, {
-    expiresIn: JWT_EXPIRES_IN,
-  });
-  const refresh_token = jwt.sign({ id: user.id }, REFRESH_SECRET, {
-    expiresIn: REFRESH_EXPIRES,
-  });
-
-  // Register or update device if provided
-  if (device_id) {
-    const fullDeviceName = `${device_name || ""} ${device_model || ""}`.trim() || "Unknown Device";
-    
-    const existing = await store.findOne(TABLES.USER_DEVICES, {
-      device_id: device_id,
-      user_id: user.id,
-    });
-    
-    const deviceData = {
-      user_id: user.id,
-      device_id: device_id,
-      device_name: fullDeviceName,
-      device_os: os_version || "Unknown",
-      app_version: app_version || "1.0.0",
-      is_approved: 0,
-      last_used_at: new Date().toISOString()
-    };
-
-    if (!existing) {
-      await store.insert(TABLES.USER_DEVICES, deviceData);
-    } else {
-      await store.update(TABLES.USER_DEVICES, existing.id, {
-        device_name: fullDeviceName,
-        device_os: os_version || "Unknown",
-        app_version: app_version || "1.0.0",
-        is_approved: 0,
-        last_used_at: new Date().toISOString()
-      });
-    }
-  }
-
-  // Audit
-  await store.insert(TABLES.AUDIT_LOGS, {
-    user_id: user.id,
-    action_type: "LOGIN",
-  });
-  
-  // Login Log
-  await store.insert('login_logs', {
-    user_id: user.id,
-  });
-
-  return ok(
-    res,
-    {
-      access_token,
-      refresh_token,
-      user: payload,
-      profile: profile,
-        // institute
-        institution: user.institution_id ? await store.getById(TABLES.INSTITUTIONS, user.institution_id) : null,
-     
-    },
-    "Login successful",
+  // Find user by email OR employee_code
+  const user = await store.findOne(TABLES.USERS, u =>
+    u.email === username.toLowerCase().trim() || u.username === username.trim(),
   );
+
+  // Also search employees by employee_code
+  let employee = null;
+  if (!user) {
+    employee = await store.findOne(TABLES.EMPLOYEES, e =>
+      e.employee_code?.toLowerCase() === username.toLowerCase().trim(),
+    );
+    if (!employee) return fail(res, 'Invalid credentials', 401);
+
+    const linkedUser = employee.user_id
+      ? await store.getById(TABLES.USERS, employee.user_id)
+      : null;
+    if (!linkedUser) return fail(res, 'Invalid credentials', 401);
+
+    const userPassword = linkedUser.password || linkedUser.password_hash;
+    if (!userPassword) return fail(res, 'User has no password set', 401);
+
+    const match = await bcrypt.compare(password, userPassword);
+    if (!match || !linkedUser.is_active) return fail(res, 'Invalid credentials', 401);
+
+    return issueTokens(res, linkedUser, employee, device_id, device_name);
+  }
+
+  if (!user.is_active) return fail(res, 'Account deactivated', 401);
+  
+  const userPassword = user.password || user.password_hash;
+  if (!userPassword) return fail(res, 'User has no password set', 401);
+
+  const match = await bcrypt.compare(password, userPassword);
+  if (!match) return fail(res, 'Invalid credentials', 401);
+
+  employee = await store.findOne(TABLES.EMPLOYEES, e => e.user_id === user.id);
+  
+  // Fetch role name if it's an ID
+  if (user.user_role_id) {
+    const roleRecord = await store.getById('user_roles', user.user_role_id);
+    user.role = roleRecord ? roleRecord.role_name : 'USER';
+  }
+
+  return issueTokens(res, user, employee, device_id, device_name);
 });
 
-// ── POST /api/v1/auth/refresh ──────────────────────────────────────────────────
+async function issueTokens(res, user, employee, device_id, device_name) {
+  const payload = {
+    user_id:     user.id,
+    email:       user.email,
+    role:        user.role,
+    employee_id: employee?.id || null,
+  };
+
+  const access_token  = jwt.sign(payload, JWT_SECRET,      { expiresIn: JWT_EXPIRES_IN });
+  const refresh_token = jwt.sign({ user_id: user.id }, REFRESH_SECRET, { expiresIn: REFRESH_EXPIRES });
+
+  // Register / update device if provided
+  if (device_id && employee) {
+    const existing = await store.findOne(TABLES.DEVICE_REGISTRY,
+      d => d.device_id === device_id && d.user_id === user.id);
+    if (existing) {
+      await store.update(TABLES.DEVICE_REGISTRY, 'id', existing.id, {
+        device_name: device_name || existing.device_name, last_used_at: new Date().toISOString(),
+      });
+    } else {
+      await store.insert(TABLES.DEVICE_REGISTRY, {
+        user_id: user.id,
+        device_id, device_name: device_name || null,
+        registered_at: new Date().toISOString(),
+        last_used_at: new Date().toISOString(),
+      });
+    }
+  }
+
+  await store.insert(TABLES.AUDIT_LOGS, {
+    user_id: user.id, table_name: 'users', record_id: user.id,
+    action_type: 'LOGIN', device_id: device_id || null, created_at: new Date().toISOString(),
+  });
+
+  return ok(res, {
+    access_token,
+    refresh_token,
+    employee: employee ? {
+      id:            employee.id,
+      employee_code: employee.employee_code,
+      name:          employee.full_name,
+      role:          user.role.toLowerCase(),
+      office_id:     employee.institution_id,
+    } : null,
+  }, 'Login successful');
+}
+
+// ── POST /api/v1/auth/refresh ─────────────────────────────────────────────────
 const refreshToken = asyncHandler(async (req, res) => {
   const { refresh_token } = req.body;
-  if (!refresh_token) return fail(res, "refresh_token is required");
-  if (revokedTokens.has(refresh_token))
-    return fail(res, "Token has been revoked", 401);
+  if (!refresh_token) return fail(res, 'refresh_token is required');
+  if (revokedTokens.has(refresh_token)) return fail(res, 'Token has been revoked', 401);
 
   let decoded;
   try {
     decoded = jwt.verify(refresh_token, REFRESH_SECRET);
   } catch {
-    return fail(res, "Invalid or expired refresh token", 401);
+    return fail(res, 'Invalid or expired refresh token', 401);
   }
 
-  const user = await store.getById(TABLES.USERS, decoded.id);
-  if (!user || !user.is_active)
-    return fail(res, "User not found or deactivated", 401);
+  const user = await store.getById(TABLES.USERS, decoded.user_id);
+  if (!user || !user.is_active) return fail(res, 'User not found or deactivated', 401);
 
-  const roleRecord = await store.getById(TABLES.USER_ROLES, user.user_role_id);
-  const roleName = roleRecord ? roleRecord.role_name : null;
+  const employee = await store.findOne(TABLES.EMPLOYEES, e => e.user_id === user.id);
+  const payload  = { user_id: user.id, email: user.email, role: user.role, employee_id: employee?.id || null };
+  const access_token = jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
 
-  let profile = null;
-  if (roleName === 'Student') {
-      profile = await store.findOne(TABLES.STUDENTS, { user_id: user.id });
-  } else if (roleName === 'Teacher') {
-      profile = await store.findOne(TABLES.TEACHERS, { user_id: user.id });
-  } else if (roleName === 'Principal') {
-      profile = await store.findOne(TABLES.PRINCIPALS, { user_id: user.id });
-  }
-
-  const payload = {
-    id: user.id,
-    institution_id: user.institution_id,
-    username: user.username,
-    role: roleName,
-    profile_id: profile?.id || null,
-  };
-
-  const access_token = jwt.sign(payload, JWT_SECRET, {
-    expiresIn: JWT_EXPIRES_IN,
-  });
-  return ok(res, { access_token }, "Token refreshed");
+  return ok(res, { access_token }, 'Token refreshed');
 });
 
 // ── POST /api/v1/auth/logout ──────────────────────────────────────────────────
@@ -204,58 +152,60 @@ const logout = asyncHandler(async (req, res) => {
   const { refresh_token } = req.body;
   if (refresh_token) revokedTokens.add(refresh_token);
 
-  if (req.user && req.user.id) {
-    await store.insert(TABLES.AUDIT_LOGS, {
-      user_id: req.user.id,
-      action_type: "LOGOUT",
-    });
-  }
-
-  return ok(res, {}, "Logged out successfully");
-});
-
-// ── POST /api/v1/auth/register (ADMIN only) ───────────────────────────────────
-const register = asyncHandler(async (req, res) => {
-  const { username, password, full_name, role_name, institution_id } = req.body;
-  if (!username || !password || !full_name) return fail(res, "username, password, and full_name are required");
-
-  const existing = await store.findOne(TABLES.USERS, {
-    username: username.toLowerCase().trim(),
-  });
-  if (existing) return fail(res, "Username already in use", 409);
-
-  let roleRecord = null;
-  if (role_name) {
-    roleRecord = await store.findOne(TABLES.USER_ROLES, { role_name });
-  }
-
-  const hash = await bcrypt.hash(password, 10);
-  const user = await store.insert(TABLES.USERS, {
-    username: username.toLowerCase().trim(),
-    password_hash: hash,
-    full_name,
-    user_role_id: roleRecord?.id || null,
-    institution_id: institution_id || null,
-    is_active: true,
+  await store.insert(TABLES.AUDIT_LOGS, {
+    user_id: req.user?.id || null,
+    action_type: 'LOGOUT', table_name: 'users', record_id: req.user?.id || null,
+    created_at: new Date().toISOString(),
   });
 
-  const { password_hash, ...safeUser } = user;
-  return ok(res, safeUser, "User registered", 201);
+  return ok(res, {}, 'Logged out successfully');
 });
 
-// ── POST /api/v1/auth/change-password ──────────────────────────────────────────
-const changePassword = asyncHandler(async (req, res) => {
-  const { old_password, new_password } = req.body;
-  const user = await store.getById(TABLES.USERS, req.user.id);
-  if (!user) return fail(res, "User not found", 404);
+// ── POST /api/v1/auth/request-otp ─────────────────────────────────────────────
+const requestOtp = asyncHandler(async (req, res) => {
+  const { employee_code, phone } = req.body;
+  if (!employee_code && !phone) return fail(res, 'employee_code or phone is required');
 
-  const match = await bcrypt.compare(old_password, user.password_hash);
-  if (!match) return fail(res, "Current password is incorrect", 401);
+  const emp = employee_code
+    ? await store.findOne(TABLES.EMPLOYEES, e => e.employee_code?.toLowerCase() === employee_code.toLowerCase())
+    : await store.findOne(TABLES.EMPLOYEES, e => e.phone === phone);
 
-  const hash = await bcrypt.hash(new_password, 10);
-  await store.update(TABLES.USERS, user.id, { password_hash: hash });
+  if (!emp) return fail(res, 'Employee not found', 404);
 
-  return ok(res, {}, "Password changed successfully");
+  const otp     = String(Math.floor(100000 + Math.random() * 900000));  // 6-digit
+  const expires = Date.now() + 5 * 60 * 1000;  // 5 min
+  otpStore.set(emp.employee_id, { otp, expires });
+
+  // TODO: send via SMS/email provider in production
+  console.log(`[OTP] Employee ${emp.employee_code}: ${otp}`);
+
+  return ok(res, {
+    message: `OTP sent to registered contact (${emp.phone ? emp.phone.slice(0,-4) + '****' : '****'})`,
+    expires_in: '5 minutes',
+    // Remove in production ↓ (dev convenience only)
+    _dev_otp: process.env.NODE_ENV !== 'production' ? otp : undefined,
+  });
 });
 
-module.exports = { login, refreshToken, logout, register, changePassword };
+// ── POST /api/v1/auth/verify-otp ──────────────────────────────────────────────
+const verifyOtp = asyncHandler(async (req, res) => {
+  const { employee_code, otp, device_id, device_name } = req.body;
+  if (!employee_code || !otp) return fail(res, 'employee_code and otp are required');
+
+  const emp = await store.findOne(TABLES.EMPLOYEES, e =>
+    e.employee_code?.toLowerCase() === employee_code.toLowerCase());
+  if (!emp) return fail(res, 'Employee not found', 404);
+
+  const stored = otpStore.get(emp.employee_id);
+  if (!stored || stored.expires < Date.now()) return fail(res, 'OTP expired or not requested', 401);
+  if (stored.otp !== String(otp)) return fail(res, 'Incorrect OTP', 401);
+
+  otpStore.delete(emp.employee_id);  // single-use
+
+  const user = emp.user_id ? await store.getById(TABLES.USERS, 'user_id', emp.user_id) : null;
+  if (!user) return fail(res, 'No user account linked to this employee', 404);
+
+  return issueTokens(res, user, emp, device_id, device_name);
+});
+
+module.exports = { login, refreshToken, logout, requestOtp, verifyOtp };

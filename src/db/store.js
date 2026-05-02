@@ -7,23 +7,47 @@ const { query } = require('./db');
 
 const TABLES = {
   USERS:                'users',
-  EMPLOYEES:            'employees',
-  OFFICES:              'offices',
+  EMPLOYEES:            'teachers',
+  TEACHERS:             'teachers', // Alias
+  OFFICES:              'institutions',
+  INSTITUTIONS:         'institutions', // Alias
+  USER_ROLES:           'user_roles',
   DEPARTMENTS:          'departments',
+  SUBJECTS:             'subjects',
   SHIFTS:               'shifts',
-  FACE_TEMPLATES:       'face_templates',
-  ENROLLMENT_SESSIONS:  'enrollment_sessions',
-  ENROLLMENT_SAMPLES:   'enrollment_samples',
-  ATTENDANCE_LOGS:      'attendance_logs',
+  FACE_TEMPLATES:       'face_embedding',
+  ENROLLMENT_SESSIONS:  'face_enrollment',
+  FACE_ENROLLMENT:      'face_enrollment', // Alias
+  ENROLLMENT_SAMPLES:   'face_enrollment_images',
+  ATTENDANCE_LOGS:      'teacher_attendance',
   ATTENDANCE_SUMMARY:   'attendance_daily_summary',
   GEOFENCES:            'geofences',
   ATTENDANCE_POLICIES:  'attendance_policies',
   ATTENDANCE_EXCEPTIONS:'attendance_exceptions',
-  DEVICE_REGISTRY:      'device_registry',
+  DEVICE_REGISTRY:      'user_devices',
   SYNC_QUEUE:           'sync_queue_log',
   AUDIT_LOGS:           'audit_logs',
+  TEACHER_SUBJECT_MAPPING: 'teacher_subject_mapping',
+  ATTENDANCE_SESSIONS:     'attendance_sessions',
+  STUDENT_ATTENDANCE:      'student_attendance',
+  TEACHER_ATTENDANCE:      'teacher_attendance',
+  FACE_ENROLLMENT:         'face_enrollment',
+  FACE_EMBEDDING:          'face_embedding',
+  FACE_ENROLLMENT_IMAGES:  'face_enrollment_images',
+  FACE_RECOGNITION_LOGS:   'face_recognition_logs',
+  AI_SESSION_PROCESSING:   'ai_session_processing',
+  LEAVE_TYPES:             'leave_types',
+  LEAVE_APPLICATIONS:      'leave_applications',
+  ACADEMIC_CALENDAR:       'academic_calendar',
+  USER_DEVICES:            'user_devices',
+  SYSTEM_SETTINGS:         'system_settings',
+  NOTIFICATIONS:           'notifications',
+  COURSES:                 'courses',
+  SEMESTERS:               'semesters',
+  CLASSES:                 'classes',
+  STUDENTS:                'students',
+  PRINCIPALS:              'principals',
 };
-
 // ── Generic helpers (Mapped to SQL) ──────────────────────────────────────────
 
 async function getAll(table) {
@@ -102,7 +126,7 @@ async function update(table, idOrField, idOrChanges, changes) {
   const setClause = keys.map((k, i) => `${k} = $${i + 2}`).join(', ');
   const values = [id, ...Object.values(finalChanges)];
 
-  const sql = `UPDATE ${table} SET ${setClause}, updated_at = CURRENT_TIMESTAMP WHERE ${field} = $1 RETURNING *`;
+  const sql = `UPDATE ${table} SET ${setClause} WHERE ${field} = $1 RETURNING *`;
   const { rows } = await query(sql, values);
   return rows[0] || null;
 }
