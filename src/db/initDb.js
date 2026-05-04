@@ -48,7 +48,6 @@ const initDb = async () => {
         // 5. AI Face Recognition Tables
         "face_enrollment",
         "face_embedding",
-        "face_enrollment_images",
         "face_recognition_logs",
         "ai_session_processing",
         

@@ -58,20 +58,6 @@ EXCEPTION
     WHEN duplicate_object THEN null;
 END $$;
 
-DO $$ 
-BEGIN
-    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'image_angle_enum') THEN
-        CREATE TYPE image_angle_enum AS ENUM (
-            'Front', 
-            'Left', 
-            'Right', 
-            'Up', 
-            'Down'
-        );
-    END IF;
-EXCEPTION
-    WHEN duplicate_object THEN null;
-END $$;
 ---------------------------------------------------------
 -- 1. Institutions
 ---------------------------------------------------------
@@ -355,19 +341,6 @@ CREATE TABLE IF NOT EXISTS face_embedding (
     embedding_hash VARCHAR(256),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     is_active BOOLEAN
-);
-
----------------------------------------------------------
--- 19. Face Enrollment Images
----------------------------------------------------------
-CREATE TABLE IF NOT EXISTS face_enrollment_images (
-    id SERIAL PRIMARY KEY,
-    face_enrollment_id INT REFERENCES face_enrollment(id) ON DELETE CASCADE,
-    image_path VARCHAR(500) NOT NULL,
-    image_angle image_angle_enum,
-    image_quality_score DECIMAL(5, 2),
-    is_approved BOOLEAN,
-    captured_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
 ---------------------------------------------------------

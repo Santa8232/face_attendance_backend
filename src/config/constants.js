@@ -11,7 +11,6 @@ module.exports = {
 
   // Face matching
   FACE_MATCH_THRESHOLD: 0.70, // cosine similarity ≥ 0.70 = match
-  MAX_ENROLLMENT_SAMPLES: 5,
 
   // Attendance
   DUPLICATE_WINDOW_SECONDS: 120, // prevent duplicate punch within 2 min

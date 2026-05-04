@@ -2,7 +2,6 @@
 const store = require("../db/store");
 const { TABLES } = store;
 const { asyncHandler, ok, fail, getISTDate, toISTString } = require('../utils/helpers');
-const { MAX_ENROLLMENT_SAMPLES } = require('../config/constants');
 
 // ── 1. Start enrollment session ──────────────────────────────────────────────
 const startEnrollment = asyncHandler(async (req, res) => {
@@ -96,9 +95,7 @@ const uploadEmbedded = asyncHandler(async (req, res) => {
   if (!session)                          return fail(res, 'Session not found', 404);
   if (session.enrollment_status !== 'IN_PROGRESS')  return fail(res, 'Session is not in progress');
 
-  const existingImages = await store.findMany(TABLES.FACE_ENROLLMENT_IMAGES, { 
-    face_enrollment_id: session.id 
-  });
+
 
   // ── 1. Store Embedding (if provided) ──────────────────────────────────────
   if (finalEmbedding && Array.isArray(finalEmbedding)) {
@@ -113,21 +110,10 @@ const uploadEmbedded = asyncHandler(async (req, res) => {
     });
   }
 
-  // ── 2. Store Image ─────────────────────────────────────────────────────────
-  const resImg = await store.insert(TABLES.FACE_ENROLLMENT_IMAGES, {
-    face_enrollment_id: session.id,
-    image_path:         req.files && req.files[0] ? req.files[0].path : (image_base64 ? 'base64_stored' : null),
-    image_angle:        pose.angle || 'FRONT',
-    image_quality_score: quality_score || 0,
-    is_approved:        true,
-    captured_at:        toISTString(),
-  });
-
   return ok(res, {
-    id: resImg.id,
     face_enrollment_id: session.id,
-    image_no: (image_no || (existingImages.length + 1))
-  }, `Image ${(image_no || (existingImages.length + 1))} received`);
+    embedding_stored: !!finalEmbedding
+  }, `Data received for session ${sessionId}`);
 });
 
 // ── 3. Complete enrollment ───────────────────────────────────────────────────
@@ -142,9 +128,7 @@ const completeEnrollment = asyncHandler(async (req, res) => {
   if (!session)                          return fail(res, 'Session not found', 404);
   if (session.enrollment_status !== 'IN_PROGRESS')  return fail(res, 'Session is not in progress');
 
-  const existingImages = await store.findMany(TABLES.FACE_ENROLLMENT_IMAGES, { 
-    face_enrollment_id: session.id 
-  });
+
   
   // ── 1. Determine Aggregate Embedding ─────────────────────────────────────
   let finalAggregateEmbedding = aggregate_embedding;
