@@ -36,27 +36,8 @@ const login = asyncHandler(async (req, res) => {
     u.email === username.toLowerCase().trim() || u.username === username.trim(),
   );
 
-  // Also search employees by employee_code
-  let employee = null;
-  if (!user) {
-    employee = await store.findOne(TABLES.EMPLOYEES, e =>
-      e.employee_code?.toLowerCase() === username.toLowerCase().trim(),
-    );
-    if (!employee) return fail(res, 'Invalid credentials', 401);
-
-    const linkedUser = employee.user_id
-      ? await store.getById(TABLES.USERS, employee.user_id)
-      : null;
-    if (!linkedUser) return fail(res, 'Invalid credentials', 401);
-
-    const userPassword = linkedUser.password || linkedUser.password_hash;
-    if (!userPassword) return fail(res, 'User has no password set', 401);
-
-    const match = await bcrypt.compare(password, userPassword);
-    if (!match || !linkedUser.is_active) return fail(res, 'Invalid credentials', 401);
-
-    return issueTokens(res, linkedUser, employee, device_id, device_name);
-  }
+  if (!user) return fail(res, 'Invalid credentials', 401);
+  
 
   if (!user.is_active) return fail(res, 'Account deactivated', 401);
   
@@ -66,7 +47,7 @@ const login = asyncHandler(async (req, res) => {
   const match = await bcrypt.compare(password, userPassword);
   if (!match) return fail(res, 'Invalid credentials', 401);
 
-  employee = await store.findOne(TABLES.EMPLOYEES, e => e.user_id === user.id);
+ 
   
   // Fetch role name if it's an ID
   if (user.user_role_id) {
@@ -74,22 +55,21 @@ const login = asyncHandler(async (req, res) => {
     user.role = roleRecord ? roleRecord.role_name : 'USER';
   }
 
-  return issueTokens(res, user, employee, device_id, device_name);
+  return issueTokens(res, user, device_id, device_name);
 });
 
-async function issueTokens(res, user, employee, device_id, device_name) {
+async function issueTokens(res, user, device_id, device_name) {
   const payload = {
     user_id:     user.id,
     email:       user.email,
     role:        user.role,
-    employee_id: employee?.id || null,
   };
 
   const access_token  = jwt.sign(payload, JWT_SECRET,      { expiresIn: JWT_EXPIRES_IN });
   const refresh_token = jwt.sign({ user_id: user.id }, REFRESH_SECRET, { expiresIn: REFRESH_EXPIRES });
 
   // Register / update device if provided
-  if (device_id && employee) {
+  if (device_id) {
     const existing = await store.findOne(TABLES.DEVICE_REGISTRY,
       d => d.device_id === device_id && d.user_id === user.id);
     if (existing) {
@@ -111,16 +91,52 @@ async function issueTokens(res, user, employee, device_id, device_name) {
     action_type: 'LOGIN', device_id: device_id || null, created_at: new Date().toISOString(),
   });
 
+  const institution = await store.getById(TABLES.INSTITUTIONS, user.institution_id);
+
+  let profile = null;
+
+  // ENUM ROLE ARE :
+  //    'Directorate Admin', 
+  //    'Principal', 
+  //    'College Admin', 
+  //    'Teacher', 
+  //    'Student', 
+  //    'System Administrator'
+
+  switch (user.role) {
+    case 'Teacher':
+      profile = await store.findOne(TABLES.TEACHERS, u => u.user_id === user.id);
+      break;
+    case 'Student':
+      profile = await store.findOne(TABLES.STUDENTS, u => u.user_id === user.id);
+      break;
+    case 'Principal':
+      profile = await store.findOne(TABLES.PRINCIPALS, u => u.user_id === user.id);
+      break;
+    default:
+      break;
+  }
+
+
   return ok(res, {
     access_token,
     refresh_token,
-    employee: employee ? {
-      id:            employee.id,
-      employee_code: employee.employee_code,
-      name:          employee.full_name,
-      role:          user.role.toLowerCase(),
-      office_id:     employee.institution_id,
-    } : null,
+    user: {
+      id: user.id,
+      username: user.username,
+      email: user.email,
+      role: user.role,
+      face_enrolled: user.face_enrolled || false,
+    },
+    institution: institution,
+    profile: profile ?? null
+    // employee: employee ? {
+    //   id:            employee.id,
+    //   employee_code: employee.employee_code,
+    //   name:          employee.full_name,
+    //   role:          user.role.toLowerCase(),
+    //   office_id:     employee.institution_id,
+    // } : null,
   }, 'Login successful');
 }
 

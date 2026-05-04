@@ -1,23 +1,16 @@
-const { v4: uuidv4 } = require('uuid');
+
 const store = require("../db/store");
 const { TABLES } = store;
 const { asyncHandler, ok, fail, getISTDate, toISTString } = require('../utils/helpers');
 const { MAX_ENROLLMENT_SAMPLES } = require('../config/constants');
-
-const ENROLLMENT_INSTRUCTIONS = [
-  'Look straight at the camera',
-  'Turn your head slightly to the left',
-  'Turn your head slightly to the right',
-  'Blink naturally when prompted',
-  'Keep your face well-lit and unobstructed',
-];
 
 // ── 1. Start enrollment session ──────────────────────────────────────────────
 const startEnrollment = asyncHandler(async (req, res) => {
   const { user_id,role,institution_id } = req.body;
   
   if (!user_id || !role || !institution_id) return fail(res, 'user_id, role and institution_id are required');
-  
+  // check if the id are 0 that is invalid
+  if(user_id === 0 || institution_id === 0 || role === 0) return fail(res, 'user_id, role or institution_id is/are invalid');
 
   const existing = await store.findOne(TABLES.FACE_ENROLLMENT, { 
     user_id: user_id, 
@@ -34,8 +27,8 @@ const startEnrollment = asyncHandler(async (req, res) => {
   //if exist
 
 
-  // Create face enrollment
-  const insertData = { 
+  // // Create face enrollment
+  const insertData = {
     user_id: user_id, 
     institution_id: institution_id,
     enrollment_status: 'IN_PROGRESS', 

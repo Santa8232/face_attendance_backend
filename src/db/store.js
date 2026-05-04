@@ -7,17 +7,17 @@ const { query } = require('./db');
 
 const TABLES = {
   USERS:                'users',
-  EMPLOYEES:            'teachers',
-  TEACHERS:             'teachers', // Alias
-  OFFICES:              'institutions',
-  INSTITUTIONS:         'institutions', // Alias
+  TEACHERS:             'teachers',
+  STUDENTS:             'students',
+  PRINCIPALS:           'principals',
+  INSTITUTIONS:         'institutions',
   USER_ROLES:           'user_roles',
   DEPARTMENTS:          'departments',
   SUBJECTS:             'subjects',
   SHIFTS:               'shifts',
   FACE_TEMPLATES:       'face_embedding',
   ENROLLMENT_SESSIONS:  'face_enrollment',
-  FACE_ENROLLMENT:      'face_enrollment', // Alias
+  FACE_ENROLLMENT:      'face_enrollment',
   ENROLLMENT_SAMPLES:   'face_enrollment_images',
   ATTENDANCE_LOGS:      'teacher_attendance',
   ATTENDANCE_SUMMARY:   'attendance_daily_summary',
@@ -45,8 +45,7 @@ const TABLES = {
   COURSES:                 'courses',
   SEMESTERS:               'semesters',
   CLASSES:                 'classes',
-  STUDENTS:                'students',
-  PRINCIPALS:              'principals',
+
 };
 // ── Generic helpers (Mapped to SQL) ──────────────────────────────────────────
 
