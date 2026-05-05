@@ -1,0 +1,35 @@
+class Tables {
+  static const String users = 'users';
+  static const String teachers = 'teachers';
+  static const String students = 'students';
+  static const String principals = 'principals';
+  static const String institutions = 'institutions';
+  static const String userRoles = 'user_roles';
+  static const String departments = 'departments';
+  static const String subjects = 'subjects';
+  static const String shifts = 'shifts';
+  static const String faceEmbedding = 'face_embedding';
+  static const String faceEnrollment = 'face_enrollment';
+  static const String teacherAttendance = 'teacher_attendance';
+  static const String studentAttendance = 'student_attendance';
+  static const String attendanceSessions = 'attendance_sessions';
+  static const String geofences = 'geofences';
+  static const String attendancePolicies = 'attendance_policies';
+  static const String attendanceExceptions = 'attendance_exceptions';
+  static const String userDevices = 'user_devices';
+  static const String auditLogs = 'audit_logs';
+  static const String teacherSubjectMapping = 'teacher_subject_mapping';
+  static const String studentClassMapping = 'student_class_mapping';
+  static const String academicCalendar = 'academic_calendar';
+  static const String leaveTypes = 'leave_types';
+  static const String leaveApplications = 'leave_applications';
+  static const String loginLogs = 'login_logs';
+  static const String aiSessionProcessing = 'ai_session_processing';
+  static const String systemSettings = 'system_settings';
+  static const String fileUploads = 'file_uploads';
+  static const String faceRecognitionLogs = 'face_recognition_logs';
+  static const String notifications = 'notifications';
+  static const String courses = 'courses';
+  static const String semesters = 'semesters';
+  static const String classes = 'classes';
+}

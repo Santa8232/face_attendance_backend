@@ -1,0 +1,25 @@
+name: face_attendance_dart
+description: A sample command-line application.
+version: 1.0.0
+# repository: https://github.com/my_org/my_repo
+
+environment:
+  sdk: ^3.11.5
+
+# Add regular dependencies here.
+dependencies:
+  path: ^1.9.0
+  shelf: ^1.4.2
+  shelf_router: ^1.1.4
+  postgres: ^3.5.9
+  dart_jsonwebtoken: ^3.4.1
+  bcrypt: ^1.2.0
+  shelf_multipart: ^2.0.1
+  dotenv: ^4.2.0
+  uuid: ^4.5.3
+  shelf_cors_headers: ^0.1.5
+  http: ^1.6.0
+
+dev_dependencies:
+  lints: ^6.0.0
+  test: ^1.25.6
